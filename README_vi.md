@@ -4,6 +4,8 @@ Công cụ GUI Windows nhẹ để sắp xếp các tệp ảnh theo ngày EXIF 
 
 ## Tính Năng
 
+- **Icon Chuyên Nghiệp**: Biểu tượng ứng dụng tùy chỉnh chất lượng cao
+- **Tệp Thực Thi Duy Nhất**: Được đóng gói thành tệp `.exe` độc lập để dễ dàng di chuyển
 - **Quét Đệ Quy**: Quét thư mục nguồn với độ sâu không giới hạn
 - **Trích Xuất Ngày EXIF**: Trích xuất ngày từ metadata ảnh với cơ chế dự phòng thông minh
 - **Sắp Xếp Theo Ngày**: Tổ chức ảnh theo cấu trúc `YYYY/MM/DD/tên_tệp`

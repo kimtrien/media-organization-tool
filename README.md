@@ -4,6 +4,8 @@ A lightweight Windows GUI tool for organizing image files by their EXIF date int
 
 ## Features
 
+- **Professional Icon**: Custom high-quality application icon
+- **Single Executable**: Built as a standalone `.exe` for easy portability
 - **Recursive Scanning**: Scans source folder at unlimited depth
 - **EXIF Date Extraction**: Extracts date from image metadata with intelligent fallback
 - **Date-Based Organization**: Organizes images into `YYYY/MM/DD/filename` structure

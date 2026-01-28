@@ -5,6 +5,7 @@ A lightweight tool for organizing images by EXIF date.
 """
 
 import os
+import sys
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext
 import threading
@@ -32,6 +33,24 @@ class MainWindow:
         self.root = root
         self.root.title("Image Organization Tool")
         self.root.geometry("700x600")
+        
+        # Set icon
+        icon_path = self.resource_path("app_icon.ico")
+        if os.path.exists(icon_path):
+            try:
+                self.root.iconbitmap(icon_path)
+            except Exception as e:
+                logger.warning(f"Could not load window icon: {e}")
+        
+    def resource_path(self, relative_path):
+        """ Get absolute path to resource, works for dev and for PyInstaller """
+        try:
+            # PyInstaller creates a temp folder and stores path in _MEIPASS
+            base_path = sys._MEIPASS
+        except Exception:
+            base_path = os.path.abspath(".")
+
+        return os.path.join(base_path, relative_path)
         
         # State
         self.source_folder = tk.StringVar()
