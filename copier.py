@@ -83,9 +83,19 @@ def _write_invalid_images_log(invalid_images):
     
     Args:
         invalid_images: List of invalid image dicts with 'source' and 'error' keys
+        
+    Returns:
+        str: Path to the created log file
     """
     try:
-        log_path = os.path.join(os.path.dirname(__file__), 'invalid_images.log')
+        # Create logs directory if it doesn't exist
+        logs_dir = os.path.join(os.path.dirname(__file__), 'logs')
+        os.makedirs(logs_dir, exist_ok=True)
+        
+        # Create filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_filename = f"invalid_images_{timestamp}.log"
+        log_path = os.path.join(logs_dir, log_filename)
         
         with open(log_path, 'w', encoding='utf-8') as f:
             f.write(f"Invalid Images Log - Generated {datetime.now()}\n")
@@ -98,9 +108,11 @@ def _write_invalid_images_log(invalid_images):
                 f.write(f"{'-'*80}\n")
         
         logger.info(f"Invalid images log saved to: {log_path}")
+        return log_path
         
     except Exception as e:
         logger.error(f"Error writing invalid images log: {e}")
+        return None
 
 
 def _write_success_log(success_files):
@@ -109,9 +121,19 @@ def _write_success_log(success_files):
     
     Args:
         success_files: List of success dicts with 'source' and 'destination' keys
+        
+    Returns:
+        str: Path to the created log file
     """
     try:
-        log_path = os.path.join(os.path.dirname(__file__), 'success_report.txt')
+        # Create logs directory if it doesn't exist
+        logs_dir = os.path.join(os.path.dirname(__file__), 'logs')
+        os.makedirs(logs_dir, exist_ok=True)
+        
+        # Create filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_filename = f"success_report_{timestamp}.txt"
+        log_path = os.path.join(logs_dir, log_filename)
         
         with open(log_path, 'w', encoding='utf-8') as f:
             f.write(f"Success Report - Generated {datetime.now()}\n")
@@ -122,9 +144,12 @@ def _write_success_log(success_files):
                 f.write(f"{item['source']}  -->  {item['destination']}\n")
         
         logger.info(f"Success report saved to: {log_path}")
+        return log_path
         
     except Exception as e:
         logger.error(f"Error writing success report: {e}")
+        return None
+
 
 
 
@@ -231,12 +256,14 @@ def process_images(source_folder, dest_folder, progress_callback=None):
             })
     
     # Write invalid images log if any
+    invalid_log_path = None
     if invalid_images:
-        _write_invalid_images_log(invalid_images)
+        invalid_log_path = _write_invalid_images_log(invalid_images)
     
     # Write success log if any
+    success_log_path = None
     if success_files:
-        _write_success_log(success_files)
+        success_log_path = _write_success_log(success_files)
     
     logger.info(f"Processing complete. Success: {success_count}, Duplicates: {duplicate_count}, Invalid: {invalid_count}, Errors: {error_count}")
     
@@ -248,5 +275,7 @@ def process_images(source_folder, dest_folder, progress_callback=None):
         'duplicates': duplicates,
         'errors': errors,
         'invalid_images': invalid_images,
-        'success_files': success_files
+        'success_files': success_files,
+        'invalid_log_path': invalid_log_path,
+        'success_log_path': success_log_path
     }

@@ -18,18 +18,13 @@ build/
 *.swo
 *~
 
-# Logs
+# Logs and Reports
+logs/
 *.log
-image_tool.log
-invalid_images.log
 
 # Test files
 test_images/
 test_output/
-
-# Reports
-duplicate_report.txt
-success_report.txt
 
 # OS
 .DS_Store

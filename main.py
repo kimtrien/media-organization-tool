@@ -249,17 +249,19 @@ class MainWindow:
         self._log(f"Errors: {results['error_count']} files")
         
         # Log invalid images info
-        if results['invalid_count'] > 0:
-            self._log(f"\nInvalid images log saved to: invalid_images.log")
+        if results['invalid_count'] > 0 and results.get('invalid_log_path'):
+            self._log(f"\nInvalid images log: {results['invalid_log_path']}")
         
         # Log success report info
-        if results['success_count'] > 0:
-            self._log(f"Success report saved to: success_report.txt")
+        if results['success_count'] > 0 and results.get('success_log_path'):
+            self._log(f"Success report: {results['success_log_path']}")
         
         # Generate duplicate report
+        duplicate_report_path = None
         if results['duplicates']:
-            self._generate_duplicate_report(results['duplicates'])
-            self._log(f"\nDuplicate report saved to: duplicate_report.txt")
+            duplicate_report_path = self._generate_duplicate_report(results['duplicates'])
+            if duplicate_report_path:
+                self._log(f"Duplicate report: {duplicate_report_path}")
             
             # Ask to open duplicate review
             response = messagebox.askyesno(
@@ -313,9 +315,19 @@ class MainWindow:
         
         Args:
             duplicates: List of duplicate dicts
+            
+        Returns:
+            str: Path to the created report file
         """
         try:
-            report_path = os.path.join(os.path.dirname(__file__), 'duplicate_report.txt')
+            # Create logs directory if it doesn't exist
+            logs_dir = os.path.join(os.path.dirname(__file__), 'logs')
+            os.makedirs(logs_dir, exist_ok=True)
+            
+            # Create filename with timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            report_filename = f"duplicate_report_{timestamp}.txt"
+            report_path = os.path.join(logs_dir, report_filename)
             
             with open(report_path, 'w', encoding='utf-8') as f:
                 f.write(f"Duplicate Report - Generated {datetime.now()}\n")
@@ -325,9 +337,12 @@ class MainWindow:
                     f.write(f"{dup['source']}  -->  {dup['existing']}\n")
             
             logger.info(f"Duplicate report saved to: {report_path}")
+            return report_path
             
         except Exception as e:
             logger.error(f"Error generating duplicate report: {e}")
+            return None
+
     
     def _open_duplicate_review(self, duplicates):
         """
