@@ -171,6 +171,7 @@ class MainWindow:
         options_frame = ttk.Frame(main_frame)
         options_frame.pack(fill=tk.X, pady=5)
         
+        ttk.Checkbutton(
             options_frame,
             text="Move files instead of copying (delete source after processing)",
             variable=self.move_files
