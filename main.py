@@ -42,6 +42,19 @@ class MainWindow:
             except Exception as e:
                 logger.warning(f"Could not load window icon: {e}")
         
+        # State
+        self.source_folder = tk.StringVar()
+        self.dest_folder = tk.StringVar()
+        self.move_files = tk.BooleanVar(value=False)
+        self.is_processing = False
+        self.progress_queue = queue.Queue()
+        
+        # Results
+        self.results = None
+        
+        self._build_ui()
+        self._start_queue_monitor()
+
     def resource_path(self, relative_path):
         """ Get absolute path to resource, works for dev and for PyInstaller """
         try:
@@ -51,18 +64,7 @@ class MainWindow:
             base_path = os.path.abspath(".")
 
         return os.path.join(base_path, relative_path)
-        
-        # State
-        self.source_folder = tk.StringVar()
-        self.dest_folder = tk.StringVar()
-        self.is_processing = False
-        self.progress_queue = queue.Queue()
-        
-        # Results
-        self.results = None
-        
-        self._build_ui()
-        self._start_queue_monitor()
+
     
     def _build_ui(self):
         """Build the user interface."""
@@ -89,6 +91,16 @@ class MainWindow:
             side=tk.LEFT, fill=tk.X, expand=True, padx=5
         )
         ttk.Button(dest_frame, text="Browse", command=self._browse_dest).pack(side=tk.LEFT)
+        
+        # Options
+        options_frame = ttk.Frame(main_frame)
+        options_frame.pack(fill=tk.X, pady=5)
+        
+        ttk.Checkbutton(
+            options_frame,
+            text="Move files instead of copying (delete source after processing)",
+            variable=self.move_files
+        ).pack(side=tk.LEFT, padx=5)
         
         # Start button
         button_frame = ttk.Frame(main_frame)
@@ -170,28 +182,32 @@ class MainWindow:
         self.is_processing = True
         
         # Start worker thread
+        move = self.move_files.get()
         thread = threading.Thread(
             target=self._worker_thread,
-            args=(source, dest),
+            args=(source, dest, move),
             daemon=True
         )
         thread.start()
         
-        self._log("Processing started...")
+        mode = "Moving" if move else "Copying"
+        self._log(f"Processing started ({mode})...")
     
-    def _worker_thread(self, source_folder, dest_folder):
+    def _worker_thread(self, source_folder, dest_folder, move_files):
         """
         Background worker thread for processing.
         
         Args:
             source_folder: Source directory
             dest_folder: Destination directory
+            move_files: Whether to move instead of copy
         """
         try:
             # Process images
             results = process_images(
                 source_folder,
                 dest_folder,
+                move_files=move_files,
                 progress_callback=self._progress_callback
             )
             
@@ -262,7 +278,8 @@ class MainWindow:
         self._log(f"\n{'='*50}")
         self._log("Processing Complete!")
         self._log(f"{'='*50}")
-        self._log(f"Successfully copied: {results['success_count']} files")
+        action = "moved" if self.move_files.get() else "copied"
+        self._log(f"Successfully {action}: {results['success_count']} files")
         self._log(f"Duplicates found: {results['duplicate_count']} files")
         self._log(f"Invalid images (skipped): {results['invalid_count']} files")
         self._log(f"Errors: {results['error_count']} files")
@@ -304,10 +321,11 @@ class MainWindow:
         
         self.status_label.config(text="Processing complete")
         
+        label = "Moved" if self.move_files.get() else "Copied"
         messagebox.showinfo(
             "Complete",
             f"Processing complete!\n\n"
-            f"Copied: {results['success_count']}\n"
+            f"{label}: {results['success_count']}\n"
             f"Duplicates: {results['duplicate_count']}\n"
             f"Invalid images: {results['invalid_count']}\n"
             f"Errors: {results['error_count']}"

@@ -9,14 +9,15 @@ from exif_reader import get_image_date, validate_image
 logger = logging.getLogger(__name__)
 
 
-def copy_image(source_path, dest_base, date):
+def copy_image(source_path, dest_base, date, move_files=False):
     """
-    Copy image to destination with date-based structure.
+    Copy or move image to destination with date-based structure.
     
     Args:
         source_path: Source file path
         dest_base: Destination base directory
         date: datetime object for organizing
+        move_files: Whether to move instead of copy
         
     Returns:
         dict with keys:
@@ -48,9 +49,14 @@ def copy_image(source_path, dest_base, date):
         # Create destination directory if needed
         os.makedirs(dest_dir, exist_ok=True)
         
-        # Copy file (preserves metadata)
-        shutil.copy2(source_path, dest_path)
-        logger.debug(f"Copied: {source_path} -> {dest_path}")
+        if move_files:
+            # Move file
+            shutil.move(source_path, dest_path)
+            logger.debug(f"Moved: {source_path} -> {dest_path}")
+        else:
+            # Copy file (preserves metadata)
+            shutil.copy2(source_path, dest_path)
+            logger.debug(f"Copied: {source_path} -> {dest_path}")
         
         return {
             'success': True,
@@ -153,28 +159,31 @@ def _write_success_log(success_files):
 
 
 
-def process_images(source_folder, dest_folder, progress_callback=None):
+def process_images(source_folder, dest_folder, move_files=False, progress_callback=None):
     """
     Process all images from source to destination.
     
     Args:
         source_folder: Source directory to scan
         dest_folder: Destination base directory
+        move_files: Whether to move instead of copy
         progress_callback: Function to call with progress updates
                           Signature: callback(current, total, status_msg)
         
     Returns:
         dict with keys:
-            - 'success_count': number of files copied
+            - 'success_count': number of files processed
             - 'duplicate_count': number of duplicates found
             - 'error_count': number of errors
             - 'invalid_count': number of invalid images (cannot identify)
             - 'duplicates': list of duplicate info dicts
             - 'errors': list of error info dicts
             - 'invalid_images': list of invalid image info dicts
-            - 'success_files': list of successfully copied files
+            - 'success_files': list of successfully processed files
+            - 'invalid_log_path': path to invalid images log
+            - 'success_log_path': path to success report
     """
-    logger.info(f"Processing images from {source_folder} to {dest_folder}")
+    logger.info(f"Processing images from {source_folder} to {dest_folder} (Move: {move_files})")
     
     success_count = 0
     duplicate_count = 0
@@ -220,8 +229,8 @@ def process_images(source_folder, dest_folder, progress_callback=None):
                 })
                 continue
             
-            # Copy image
-            result = copy_image(source_path, dest_folder, date)
+            # Process image (copy or move)
+            result = copy_image(source_path, dest_folder, date, move_files=move_files)
             
             if result['success']:
                 success_count += 1
