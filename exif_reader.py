@@ -17,6 +17,27 @@ from PIL.ExifTags import TAGS
 logger = logging.getLogger(__name__)
 
 
+def validate_image(file_path):
+    """
+    Validate if file is a valid image that can be opened.
+    
+    Args:
+        file_path: Path to image file
+        
+    Returns:
+        tuple: (is_valid: bool, error_message: str or None)
+    """
+    try:
+        with Image.open(file_path) as img:
+            # Try to verify the image
+            img.verify()
+        return (True, None)
+    except Exception as e:
+        error_msg = f"Cannot identify image: {str(e)}"
+        logger.warning(f"{error_msg} - {file_path}")
+        return (False, error_msg)
+
+
 def get_image_date(file_path):
     """
     Extract date from image file.

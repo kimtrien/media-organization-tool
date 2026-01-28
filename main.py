@@ -245,7 +245,12 @@ class MainWindow:
         self._log(f"{'='*50}")
         self._log(f"Successfully copied: {results['success_count']} files")
         self._log(f"Duplicates found: {results['duplicate_count']} files")
+        self._log(f"Invalid images (skipped): {results['invalid_count']} files")
         self._log(f"Errors: {results['error_count']} files")
+        
+        # Log invalid images info
+        if results['invalid_count'] > 0:
+            self._log(f"\nInvalid images log saved to: invalid_images.log")
         
         # Generate duplicate report
         if results['duplicates']:
@@ -279,6 +284,7 @@ class MainWindow:
             f"Processing complete!\n\n"
             f"Copied: {results['success_count']}\n"
             f"Duplicates: {results['duplicate_count']}\n"
+            f"Invalid images: {results['invalid_count']}\n"
             f"Errors: {results['error_count']}"
         )
     

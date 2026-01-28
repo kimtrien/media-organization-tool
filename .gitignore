@@ -21,6 +21,7 @@ build/
 # Logs
 *.log
 image_tool.log
+invalid_images.log
 
 # Test files
 test_images/

@@ -1,15 +1,10 @@
-"""
-File Copier Module
-
-Handles copying files with duplicate detection and date-based organization.
-"""
-
 import os
 import shutil
 import logging
 from pathlib import Path
+from datetime import datetime
 from scanner import scan_folder
-from exif_reader import get_image_date
+from exif_reader import get_image_date, validate_image
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +77,32 @@ def copy_image(source_path, dest_base, date):
         }
 
 
+def _write_invalid_images_log(invalid_images):
+    """
+    Write invalid images to a separate log file.
+    
+    Args:
+        invalid_images: List of invalid image dicts with 'source' and 'error' keys
+    """
+    try:
+        log_path = os.path.join(os.path.dirname(__file__), 'invalid_images.log')
+        
+        with open(log_path, 'w', encoding='utf-8') as f:
+            f.write(f"Invalid Images Log - Generated {datetime.now()}\n")
+            f.write(f"{'='*80}\n\n")
+            f.write(f"Total invalid images: {len(invalid_images)}\n\n")
+            
+            for item in invalid_images:
+                f.write(f"File: {item['source']}\n")
+                f.write(f"Error: {item['error']}\n")
+                f.write(f"{'-'*80}\n")
+        
+        logger.info(f"Invalid images log saved to: {log_path}")
+        
+    except Exception as e:
+        logger.error(f"Error writing invalid images log: {e}")
+
+
 def process_images(source_folder, dest_folder, progress_callback=None):
     """
     Process all images from source to destination.
@@ -97,16 +118,20 @@ def process_images(source_folder, dest_folder, progress_callback=None):
             - 'success_count': number of files copied
             - 'duplicate_count': number of duplicates found
             - 'error_count': number of errors
+            - 'invalid_count': number of invalid images (cannot identify)
             - 'duplicates': list of duplicate info dicts
             - 'errors': list of error info dicts
+            - 'invalid_images': list of invalid image info dicts
     """
     logger.info(f"Processing images from {source_folder} to {dest_folder}")
     
     success_count = 0
     duplicate_count = 0
     error_count = 0
+    invalid_count = 0
     duplicates = []
     errors = []
+    invalid_images = []
     
     # Get all image files
     image_files = list(scan_folder(source_folder))
@@ -119,6 +144,18 @@ def process_images(source_folder, dest_folder, progress_callback=None):
     
     for idx, source_path in enumerate(image_files, 1):
         try:
+            # Validate image first
+            is_valid, error_msg = validate_image(source_path)
+            
+            if not is_valid:
+                logger.warning(f"Invalid image, skipping: {source_path}")
+                invalid_count += 1
+                invalid_images.append({
+                    'source': source_path,
+                    'error': error_msg
+                })
+                continue
+            
             # Extract date from image
             date = get_image_date(source_path)
             
@@ -162,12 +199,18 @@ def process_images(source_folder, dest_folder, progress_callback=None):
                 'error': str(e)
             })
     
-    logger.info(f"Processing complete. Success: {success_count}, Duplicates: {duplicate_count}, Errors: {error_count}")
+    # Write invalid images log if any
+    if invalid_images:
+        _write_invalid_images_log(invalid_images)
+    
+    logger.info(f"Processing complete. Success: {success_count}, Duplicates: {duplicate_count}, Invalid: {invalid_count}, Errors: {error_count}")
     
     return {
         'success_count': success_count,
         'duplicate_count': duplicate_count,
         'error_count': error_count,
+        'invalid_count': invalid_count,
         'duplicates': duplicates,
-        'errors': errors
+        'errors': errors,
+        'invalid_images': invalid_images
     }
