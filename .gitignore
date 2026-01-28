@@ -29,6 +29,7 @@ test_output/
 
 # Reports
 duplicate_report.txt
+success_report.txt
 
 # OS
 .DS_Store

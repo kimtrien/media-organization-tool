@@ -252,6 +252,10 @@ class MainWindow:
         if results['invalid_count'] > 0:
             self._log(f"\nInvalid images log saved to: invalid_images.log")
         
+        # Log success report info
+        if results['success_count'] > 0:
+            self._log(f"Success report saved to: success_report.txt")
+        
         # Generate duplicate report
         if results['duplicates']:
             self._generate_duplicate_report(results['duplicates'])

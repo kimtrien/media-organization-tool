@@ -103,6 +103,31 @@ def _write_invalid_images_log(invalid_images):
         logger.error(f"Error writing invalid images log: {e}")
 
 
+def _write_success_log(success_files):
+    """
+    Write successfully copied files to a separate log file.
+    
+    Args:
+        success_files: List of success dicts with 'source' and 'destination' keys
+    """
+    try:
+        log_path = os.path.join(os.path.dirname(__file__), 'success_report.txt')
+        
+        with open(log_path, 'w', encoding='utf-8') as f:
+            f.write(f"Success Report - Generated {datetime.now()}\n")
+            f.write(f"{'='*80}\n\n")
+            f.write(f"Total files copied successfully: {len(success_files)}\n\n")
+            
+            for item in success_files:
+                f.write(f"{item['source']}  -->  {item['destination']}\n")
+        
+        logger.info(f"Success report saved to: {log_path}")
+        
+    except Exception as e:
+        logger.error(f"Error writing success report: {e}")
+
+
+
 def process_images(source_folder, dest_folder, progress_callback=None):
     """
     Process all images from source to destination.
@@ -122,6 +147,7 @@ def process_images(source_folder, dest_folder, progress_callback=None):
             - 'duplicates': list of duplicate info dicts
             - 'errors': list of error info dicts
             - 'invalid_images': list of invalid image info dicts
+            - 'success_files': list of successfully copied files
     """
     logger.info(f"Processing images from {source_folder} to {dest_folder}")
     
@@ -132,6 +158,7 @@ def process_images(source_folder, dest_folder, progress_callback=None):
     duplicates = []
     errors = []
     invalid_images = []
+    success_files = []
     
     # Get all image files
     image_files = list(scan_folder(source_folder))
@@ -173,6 +200,10 @@ def process_images(source_folder, dest_folder, progress_callback=None):
             
             if result['success']:
                 success_count += 1
+                success_files.append({
+                    'source': source_path,
+                    'destination': result['dest_path']
+                })
             elif result['is_duplicate']:
                 duplicate_count += 1
                 duplicates.append({
@@ -203,6 +234,10 @@ def process_images(source_folder, dest_folder, progress_callback=None):
     if invalid_images:
         _write_invalid_images_log(invalid_images)
     
+    # Write success log if any
+    if success_files:
+        _write_success_log(success_files)
+    
     logger.info(f"Processing complete. Success: {success_count}, Duplicates: {duplicate_count}, Invalid: {invalid_count}, Errors: {error_count}")
     
     return {
@@ -212,5 +247,6 @@ def process_images(source_folder, dest_folder, progress_callback=None):
         'invalid_count': invalid_count,
         'duplicates': duplicates,
         'errors': errors,
-        'invalid_images': invalid_images
+        'invalid_images': invalid_images,
+        'success_files': success_files
     }
