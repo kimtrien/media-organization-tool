@@ -50,6 +50,7 @@ class MainWindow:
         self.is_processing = False
         self.progress_queue = queue.Queue()
         self.current_log_dir = None
+        self.dest_history_list = []
         
         # Results
         self.results = None
@@ -76,18 +77,52 @@ class MainWindow:
             if os.path.exists(config_path):
                 with open(config_path, 'r') as f:
                     config = json.load(f)
-                    dest = config.get('last_dest_folder')
-                    if dest and os.path.isdir(dest):
-                        self.dest_folder.set(dest)
+                    
+                    # Load history
+                    history = config.get('dest_history', [])
+                    if isinstance(history, list):
+                        self.dest_history_list = [p for p in history if p and os.path.isdir(p)]
+                    
+                    # Set current value (MRU is first)
+                    if self.dest_history_list:
+                        self.dest_folder.set(self.dest_history_list[0])
+                        
+                    # Update combobox values if exists
+                    if hasattr(self, 'dest_combo'):
+                        self.dest_combo['values'] = self.dest_history_list
+                        
         except Exception as e:
             logger.warning(f"Could not load config: {e}")
+
+    def _update_history(self):
+        """Update history with current selection."""
+        current = self.dest_folder.get().strip()
+        if not current or not os.path.isdir(current):
+            return
+
+        # Remove if exists (to move to top)
+        if current in self.dest_history_list:
+            self.dest_history_list.remove(current)
+            
+        # Add to top
+        self.dest_history_list.insert(0, current)
+        
+        # Keep max 10
+        self.dest_history_list = self.dest_history_list[:10]
+        
+        # Update combobox
+        if hasattr(self, 'dest_combo'):
+            self.dest_combo['values'] = self.dest_history_list
+            self.dest_combo.set(current)
 
     def _save_config(self):
         """Save configuration to file."""
         try:
+            self._update_history()
+            
             config_path = self._get_config_path()
             config = {
-                'last_dest_folder': self.dest_folder.get()
+                'dest_history': self.dest_history_list
             }
             with open(config_path, 'w') as f:
                 json.dump(config, f)
@@ -126,9 +161,8 @@ class MainWindow:
         dest_frame.pack(fill=tk.X, pady=5)
         
         ttk.Label(dest_frame, text="Destination Folder:", width=15).pack(side=tk.LEFT)
-        ttk.Entry(dest_frame, textvariable=self.dest_folder).pack(
-            side=tk.LEFT, fill=tk.X, expand=True, padx=5
-        )
+        self.dest_combo = ttk.Combobox(dest_frame, textvariable=self.dest_folder)
+        self.dest_combo.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         ttk.Button(dest_frame, text="Browse", command=self._browse_dest).pack(side=tk.LEFT)
         
         # Options
