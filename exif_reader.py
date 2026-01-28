@@ -19,6 +19,10 @@ import logging
 from datetime import datetime
 from PIL import Image
 from PIL.ExifTags import TAGS
+import pillow_heif
+
+# Register HEIF opener
+pillow_heif.register_heif_opener()
 
 from scanner import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 from video_reader import validate_video, get_video_date
