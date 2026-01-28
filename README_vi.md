@@ -11,6 +11,9 @@ Công cụ GUI Windows nhẹ để sắp xếp các tệp ảnh và video theo n
 - **Trích Xuất Metadata**: Trích xuất ngày từ EXIF (ảnh) và metadata FFmpeg (video) với cơ chế dự phòng thông minh
 - **Sắp Xếp Theo Ngày**: Tổ chức tệp theo cấu trúc `YYYY/MM/DD/tên_tệp`
 - **Phát Hiện Trùng Lặp**: Không bao giờ ghi đè các tệp hiện có
+- **Di Chuyển hoặc Sao Chép**: Linh hoạt sao chép hoặc di chuyển tệp (xóa nguồn)
+- **Nhật Ký Theo Phiên**: Giữ nhật ký được tổ chức trong các thư mục theo dấu thời gian cho mỗi lần chạy
+- **Lịch Sử Thông Minh**: Ghi nhớ các thư mục đích được sử dụng gần đây
 - **Xem Xét Trùng Lặp Thủ Công**: So sánh cạnh nhau với các tùy chọn quyết định thủ công
 - **Tối Ưu Hiệu Suất**: Xử lý mượt mà hơn 10,000 tệp
 - **Giao Diện Phản Hồi**: Xử lý nền giữ cho giao diện luôn phản hồi
@@ -97,9 +100,10 @@ python main.py
 
 ### Quy Trình Làm Việc
 
-1. **Chọn Thư Mục Nguồn**: Nhấp "Browse" bên cạnh "Source Folder" và chọn thư mục chứa ảnh của bạn
-2. **Chọn Thư Mục Đích**: Nhấp "Browse" bên cạnh "Destination Folder" và chọn nơi lưu ảnh đã sắp xếp
-3. **Bắt Đầu Xử Lý**: Nhấp nút "Start Processing"
+1. **Chọn Thư Mục Nguồn**: Nhấp "Browse" bên cạnh "Source Folder" và chọn thư mục chứa ảnh/video của bạn
+2. **Chọn Thư Mục Đích**: Nhấp "Browse" hoặc chọn từ danh sách lịch sử để chọn nơi lưu tệp đã sắp xếp
+3. **Chọn Thao Tác**: Tùy chọn tích vào "Move files instead of copying" để xóa tệp nguồn sau khi xử lý
+4. **Bắt Đầu Xử Lý**: Nhấp nút "Start Processing"
 4. **Theo Dõi Tiến Trình**: Xem thanh tiến trình và nhật ký cập nhật theo thời gian thực
 5. **Xem Xét Trùng Lặp** (nếu có):
    - Sau khi xử lý, bạn sẽ được nhắc xem xét các tệp trùng lặp
@@ -142,9 +146,11 @@ Công cụ được thiết kế để không bao giờ bị crash:
 - **Lỗi Quyền Truy Cập**: Được ghi nhật ký và bỏ qua
 - **Đĩa Đầy**: Dừng một cách nhẹ nhàng với thông báo lỗi
 
-Tất cả lỗi được ghi vào:
-- Tệp `image_tool.log`
-- Cửa sổ nhật ký UI
+Tất cả nhật ký được lưu trong `logs/<session_timestamp>/`:
+- `session.log`: Nhật ký kỹ thuật chi tiết
+- `success_report.txt`: Danh sách các tệp đã xử lý thành công
+- `invalid_files.log`: Danh sách các tệp không thể xử lý
+- `duplicate_report.txt`: Danh sách các tệp trùng lặp
 
 ## Hiệu Suất
 

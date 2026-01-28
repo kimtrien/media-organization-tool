@@ -11,6 +11,9 @@ A lightweight Windows GUI tool for organizing image and video files by their EXI
 - **Metadata Extraction**: Extracts date from EXIF (images) and FFmpeg metadata (videos) with intelligent fallback
 - **Date-Based Organization**: Organizes files into `YYYY/MM/DD/filename` structure
 - **Duplicate Detection**: Never overwrites existing files
+- **Move or Copy**: Flexibility to copy or move files (deleting source)
+- **Session-Based Logging**: Keeps logs organized in timestamped folders for each run
+- **Smart History**: Remembers recently used destination folders
 - **Manual Duplicate Review**: Side-by-side comparison with manual decision options
 - **Performance Optimized**: Handles 10,000+ files smoothly
 - **Responsive UI**: Background processing keeps interface responsive
@@ -97,9 +100,10 @@ python main.py
 
 ### Workflow
 
-1. **Select Source Folder**: Click "Browse" next to "Source Folder" and select the folder containing your images
-2. **Select Destination Folder**: Click "Browse" next to "Destination Folder" and select where organized images should go
-3. **Start Processing**: Click "Start Processing" button
+1. **Select Source Folder**: Click "Browse" next to "Source Folder" and select the folder containing your media
+2. **Select Destination Folder**: Click "Browse" or select from history dropdown for where organized files should go
+3. **Choose Operation**: Optionally check "Move files instead of copying" to delete source files after processing
+4. **Start Processing**: Click "Start Processing" button
 4. **Monitor Progress**: Watch the progress bar and log for real-time updates
 5. **Review Duplicates** (if any):
    - After processing, you'll be prompted to review duplicates
@@ -141,9 +145,11 @@ The tool is designed to never crash:
 - **Permission Errors**: Logged and skipped
 - **Disk Full**: Gracefully stops with error message
 
-All errors are logged to:
-- `image_tool.log` file
-- UI log window
+All logs are saved in `logs/<session_timestamp>/`:
+- `session.log`: Detailed technical log
+- `success_report.txt`: List of successfully processed files
+- `invalid_files.log`: List of files that couldn't be processed
+- `duplicate_report.txt`: List of duplicates found
 
 ## Performance
 
