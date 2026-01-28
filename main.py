@@ -11,6 +11,7 @@ from tkinter import ttk, filedialog, messagebox, scrolledtext
 import threading
 import queue
 import logging
+import json
 from datetime import datetime
 
 from utils import setup_logging
@@ -54,7 +55,40 @@ class MainWindow:
         self.results = None
         
         self._build_ui()
+        self._load_config()
         self._start_queue_monitor()
+
+    def _get_config_path(self):
+        """Get path to config file in AppData."""
+        app_data = os.getenv('APPDATA')
+        config_dir = os.path.join(app_data, 'MediaOrganizer')
+        os.makedirs(config_dir, exist_ok=True)
+        return os.path.join(config_dir, 'config.json')
+
+    def _load_config(self):
+        """Load configuration from file."""
+        try:
+            config_path = self._get_config_path()
+            if os.path.exists(config_path):
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+                    dest = config.get('last_dest_folder')
+                    if dest and os.path.isdir(dest):
+                        self.dest_folder.set(dest)
+        except Exception as e:
+            logger.warning(f"Could not load config: {e}")
+
+    def _save_config(self):
+        """Save configuration to file."""
+        try:
+            config_path = self._get_config_path()
+            config = {
+                'last_dest_folder': self.dest_folder.get()
+            }
+            with open(config_path, 'w') as f:
+                json.dump(config, f)
+        except Exception as e:
+            logger.warning(f"Could not save config: {e}")
 
     def resource_path(self, relative_path):
         """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -151,6 +185,7 @@ class MainWindow:
         folder = filedialog.askdirectory(title="Select Destination Folder")
         if folder:
             self.dest_folder.set(folder)
+            self._save_config()
     
     def _start_processing(self):
         """Start processing images."""
@@ -181,6 +216,7 @@ class MainWindow:
         # Disable start button
         self.start_btn.config(state=tk.DISABLED)
         self.is_processing = True
+        self._save_config()  # Save config on start
         
         # Start worker thread
         move = self.move_files.get()
