@@ -34,3 +34,5 @@ desktop.ini
 # Temporary files
 *.tmp
 *.bak
+
+config.json
