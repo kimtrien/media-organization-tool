@@ -58,6 +58,10 @@ class DuplicateReviewWindow:
         self.duplicate_list.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         list_scroll.config(command=self.duplicate_list.yview)
         
+        # Binary match indicator
+        self.match_label = ttk.Label(list_frame, text="", font=('TkDefaultFont', 9, 'bold'))
+        self.match_label.pack(side=tk.BOTTOM, pady=5)
+        
         # Populate list
         for dup in self.duplicates:
             self.duplicate_list.insert(tk.END, os.path.basename(dup['source']))
@@ -79,6 +83,8 @@ class DuplicateReviewWindow:
         self.source_path_label = ttk.Label(source_frame, text="", wraplength=400)
         self.source_path_label.pack(fill=tk.X)
         
+        ttk.Button(source_frame, text="Open File", command=lambda: self._open_file(True)).pack(pady=5)
+        
         # Existing preview
         existing_frame = ttk.LabelFrame(preview_frame, text="Existing File", padding=5)
         existing_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=5)
@@ -88,6 +94,8 @@ class DuplicateReviewWindow:
         
         self.existing_path_label = ttk.Label(existing_frame, text="", wraplength=400)
         self.existing_path_label.pack(fill=tk.X)
+        
+        ttk.Button(existing_frame, text="Open File", command=lambda: self._open_file(False)).pack(pady=5)
         
         # Bottom frame: action buttons
         button_frame = ttk.Frame(self.window, padding=10)
@@ -137,7 +145,29 @@ class DuplicateReviewWindow:
         self._load_image_preview(dup['source'], self.source_label, self.source_path_label, is_source=True)
         self._load_image_preview(dup['existing'], self.existing_label, self.existing_path_label, is_source=False)
         
+        # Show binary match status
+        is_identical = dup.get('is_identical')
+        if is_identical is True:
+            self.match_label.config(text="✅ Binary Match: YES (Files are identical)", foreground="green")
+        elif is_identical is False:
+            self.match_label.config(text="⚠️ Binary Match: NO (Content differs)", foreground="red")
+        else:
+            self.match_label.config(text="")
+            
         self._update_status()
+
+    def _open_file(self, is_source):
+        """Open file in default viewer."""
+        if not self.duplicates or self.current_index >= len(self.duplicates):
+            return
+            
+        dup = self.duplicates[self.current_index]
+        path = dup['source'] if is_source else dup['existing']
+        
+        try:
+            os.startfile(path)
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not open file:\n{e}")
     
     def _load_image_preview(self, image_path, label, path_label, is_source=True):
         """
@@ -225,9 +255,15 @@ class DuplicateReviewWindow:
         dup = self.duplicates[self.current_index]
         
         # Confirm action
+        msg = f"Delete source file?\n\n{dup['source']}"
+        if dup.get('is_identical'):
+             msg = f"✅ Files are identical.\n\n" + msg
+        else:
+             msg = f"⚠️ Files are NOT identical (Binary mistmatch).\n\n" + msg
+             
         result = messagebox.askyesno(
             "Confirm Delete",
-            f"Delete source file?\n\n{dup['source']}"
+            msg
         )
         
         if result:

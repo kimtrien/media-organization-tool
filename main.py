@@ -47,7 +47,9 @@ class MainWindow:
         self.source_folder = tk.StringVar()
         self.dest_folder = tk.StringVar()
         self.move_files = tk.BooleanVar(value=False)
+        self.delete_duplicates = tk.BooleanVar(value=False)
         self.is_processing = False
+        self.progress_queue = queue.Queue()
         self.progress_queue = queue.Queue()
         self.current_log_dir = None
         self.dest_history_list = []
@@ -169,10 +171,15 @@ class MainWindow:
         options_frame = ttk.Frame(main_frame)
         options_frame.pack(fill=tk.X, pady=5)
         
-        ttk.Checkbutton(
             options_frame,
             text="Move files instead of copying (delete source after processing)",
             variable=self.move_files
+        ).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Checkbutton(
+            options_frame,
+            text="Delete duplicate source files (Strict Check)",
+            variable=self.delete_duplicates
         ).pack(side=tk.LEFT, padx=5)
         
         # Start button
@@ -258,6 +265,7 @@ class MainWindow:
         
         # Start worker thread
         move = self.move_files.get()
+        delete_dups = self.delete_duplicates.get()
         
         # Create session log directory
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -275,7 +283,7 @@ class MainWindow:
         
         thread = threading.Thread(
             target=self._worker_thread,
-            args=(source, dest, move, self.current_log_dir),
+            args=(source, dest, move, delete_dups, self.current_log_dir),
             daemon=True
         )
         thread.start()
@@ -283,7 +291,7 @@ class MainWindow:
         mode = "Moving" if move else "Copying"
         self._log(f"Processing started ({mode})...")
     
-    def _worker_thread(self, source_folder, dest_folder, move_files, log_dir):
+    def _worker_thread(self, source_folder, dest_folder, move_files, delete_duplicates, log_dir):
         """
         Background worker thread for processing.
         
@@ -291,6 +299,7 @@ class MainWindow:
             source_folder: Source directory
             dest_folder: Destination directory
             move_files: Whether to move instead of copy
+            delete_duplicates: Whether to strict check and flag duplicates for deletion
             log_dir: Directory to save logs
         """
         try:
@@ -299,6 +308,7 @@ class MainWindow:
                 source_folder,
                 dest_folder,
                 move_files=move_files,
+                delete_duplicates=delete_duplicates,
                 log_dir=log_dir,
                 progress_callback=self._progress_callback
             )

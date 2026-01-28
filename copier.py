@@ -5,11 +5,12 @@ from pathlib import Path
 from datetime import datetime
 from scanner import scan_folder
 from exif_reader import get_media_date, validate_media, is_video_file
+from utils import are_files_identical
 
 logger = logging.getLogger(__name__)
 
 
-def copy_file(source_path, dest_base, date, move_files=False):
+def copy_file(source_path, dest_base, date, move_files=False, check_binary=False):
     """
     Copy or move media file to destination with date-based structure.
     
@@ -18,12 +19,14 @@ def copy_file(source_path, dest_base, date, move_files=False):
         dest_base: Destination base directory
         date: datetime object for organizing
         move_files: Whether to move instead of copy
+        check_binary: Whether to check binary equality for duplicates
         
     Returns:
         dict with keys:
             - 'success': bool
             - 'dest_path': destination path (if copied or duplicate)
             - 'is_duplicate': bool
+            - 'is_identical': bool (if binary checked and matched)
             - 'error': error message (if failed)
     """
     try:
@@ -38,11 +41,18 @@ def copy_file(source_path, dest_base, date, move_files=False):
         
         # Check if destination already exists
         if os.path.exists(dest_path):
-            logger.debug(f"Duplicate found: {source_path} -> {dest_path}")
+            is_identical = False
+            if check_binary:
+                is_identical = are_files_identical(source_path, dest_path)
+                logger.debug(f"Duplicate found (Identical: {is_identical}): {source_path} -> {dest_path}")
+            else:
+                logger.debug(f"Duplicate found: {source_path} -> {dest_path}")
+                
             return {
                 'success': False,
                 'dest_path': dest_path,
                 'is_duplicate': True,
+                'is_identical': is_identical,
                 'error': None
             }
         
@@ -62,6 +72,7 @@ def copy_file(source_path, dest_base, date, move_files=False):
             'success': True,
             'dest_path': dest_path,
             'is_duplicate': False,
+            'is_identical': False,
             'error': None
         }
         
@@ -157,7 +168,7 @@ def _write_success_log(success_files, log_dir):
 
 
 
-def process_media(source_folder, dest_folder, move_files=False, log_dir=None, progress_callback=None):
+def process_media(source_folder, dest_folder, move_files=False, delete_duplicates=False, log_dir=None, progress_callback=None):
     """
     Process all media files (images and videos) from source to destination.
     
@@ -165,6 +176,7 @@ def process_media(source_folder, dest_folder, move_files=False, log_dir=None, pr
         source_folder: Source directory to scan
         dest_folder: Destination base directory
         move_files: Whether to move instead of copy
+        delete_duplicates: Whether to check and flag duplicates for deletion (strict check)
         log_dir: Directory to save logs/reports
         progress_callback: Function to call with progress updates
                           Signature: callback(current, total, status_msg)
@@ -184,7 +196,7 @@ def process_media(source_folder, dest_folder, move_files=False, log_dir=None, pr
             - 'invalid_log_path': path to invalid files log
             - 'success_log_path': path to success report
     """
-    logger.info(f"Processing media from {source_folder} to {dest_folder} (Move: {move_files})")
+    logger.info(f"Processing media from {source_folder} to {dest_folder} (Move: {move_files}, Delete Dups: {delete_duplicates})")
     
     success_count = 0
     image_count = 0
@@ -233,7 +245,13 @@ def process_media(source_folder, dest_folder, move_files=False, log_dir=None, pr
                 continue
             
             # Process file (copy or move)
-            result = copy_file(source_path, dest_folder, date, move_files=move_files)
+            result = copy_file(
+                source_path, 
+                dest_folder, 
+                date, 
+                move_files=move_files,
+                check_binary=delete_duplicates
+            )
             
             if result['success']:
                 success_count += 1
@@ -250,7 +268,8 @@ def process_media(source_folder, dest_folder, move_files=False, log_dir=None, pr
                 duplicate_count += 1
                 duplicates.append({
                     'source': source_path,
-                    'existing': result['dest_path']
+                    'existing': result['dest_path'],
+                    'is_identical': result.get('is_identical', False)
                 })
             else:
                 error_count += 1
