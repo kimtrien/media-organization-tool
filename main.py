@@ -48,6 +48,7 @@ class MainWindow:
         self.move_files = tk.BooleanVar(value=False)
         self.is_processing = False
         self.progress_queue = queue.Queue()
+        self.current_log_dir = None
         
         # Results
         self.results = None
@@ -183,9 +184,24 @@ class MainWindow:
         
         # Start worker thread
         move = self.move_files.get()
+        
+        # Create session log directory
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        logs_base = os.path.join(os.path.dirname(__file__), 'logs')
+        self.current_log_dir = os.path.join(logs_base, timestamp)
+        os.makedirs(self.current_log_dir, exist_ok=True)
+        
+        # Add a file handler for the session log
+        session_log_file = os.path.join(self.current_log_dir, "session.log")
+        self.session_handler = logging.FileHandler(session_log_file, encoding='utf-8')
+        self.session_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+        logging.getLogger().addHandler(self.session_handler)
+        
+        self._log(f"Session logs will be saved to: {self.current_log_dir}")
+        
         thread = threading.Thread(
             target=self._worker_thread,
-            args=(source, dest, move),
+            args=(source, dest, move, self.current_log_dir),
             daemon=True
         )
         thread.start()
@@ -193,7 +209,7 @@ class MainWindow:
         mode = "Moving" if move else "Copying"
         self._log(f"Processing started ({mode})...")
     
-    def _worker_thread(self, source_folder, dest_folder, move_files):
+    def _worker_thread(self, source_folder, dest_folder, move_files, log_dir):
         """
         Background worker thread for processing.
         
@@ -201,6 +217,7 @@ class MainWindow:
             source_folder: Source directory
             dest_folder: Destination directory
             move_files: Whether to move instead of copy
+            log_dir: Directory to save logs
         """
         try:
             # Process media files (images and videos)
@@ -208,6 +225,7 @@ class MainWindow:
                 source_folder,
                 dest_folder,
                 move_files=move_files,
+                log_dir=log_dir,
                 progress_callback=self._progress_callback
             )
             
@@ -274,6 +292,12 @@ class MainWindow:
         self.start_btn.config(state=tk.NORMAL)
         self.progress_bar['value'] = 100
         
+        # Remove session handler
+        if hasattr(self, 'session_handler') and self.session_handler:
+            logging.getLogger().removeHandler(self.session_handler)
+            self.session_handler.close()
+            self.session_handler = None
+        
         # Log summary
         self._log(f"\n{'='*50}")
         self._log("Processing Complete!")
@@ -298,7 +322,7 @@ class MainWindow:
         # Generate duplicate report
         duplicate_report_path = None
         if results['duplicates']:
-            duplicate_report_path = self._generate_duplicate_report(results['duplicates'])
+            duplicate_report_path = self._generate_duplicate_report(results['duplicates'], self.current_log_dir)
             if duplicate_report_path:
                 self._log(f"Duplicate report: {duplicate_report_path}")
             
@@ -348,29 +372,37 @@ class MainWindow:
         self.start_btn.config(state=tk.NORMAL)
         self.status_label.config(text="Error occurred")
         
+        # Remove session handler
+        if hasattr(self, 'session_handler') and self.session_handler:
+            logging.getLogger().removeHandler(self.session_handler)
+            self.session_handler.close()
+            self.session_handler = None
+        
         self._log(f"\nERROR: {error_msg}")
         
         messagebox.showerror("Error", f"Processing failed:\n{error_msg}")
     
-    def _generate_duplicate_report(self, duplicates):
+    def _generate_duplicate_report(self, duplicates, log_dir):
         """
         Generate duplicate report file.
         
         Args:
             duplicates: List of duplicate dicts
+            log_dir: Directory to save the report (optional)
             
         Returns:
             str: Path to the created report file
         """
         try:
-            # Create logs directory if it doesn't exist
-            logs_dir = os.path.join(os.path.dirname(__file__), 'logs')
-            os.makedirs(logs_dir, exist_ok=True)
-            
-            # Create filename with timestamp
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            report_filename = f"duplicate_report_{timestamp}.txt"
-            report_path = os.path.join(logs_dir, report_filename)
+            if log_dir:
+                # Use provided session directory
+                report_path = os.path.join(log_dir, 'duplicate_report.txt')
+            else:
+                # Fallback to old behavior (shouldn't happen with new logic but good for safety)
+                logs_dir = os.path.join(os.path.dirname(__file__), 'logs')
+                os.makedirs(logs_dir, exist_ok=True)
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                report_path = os.path.join(logs_dir, f"duplicate_report_{timestamp}.txt")
             
             with open(report_path, 'w', encoding='utf-8') as f:
                 f.write(f"Duplicate Report - Generated {datetime.now()}\n")

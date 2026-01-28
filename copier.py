@@ -83,25 +83,24 @@ def copy_file(source_path, dest_base, date, move_files=False):
         }
 
 
-def _write_invalid_images_log(invalid_images):
+def _write_invalid_images_log(invalid_files, log_dir):
     """
-    Write invalid images to a separate log file.
+    Write invalid images/files to a separate log file.
     
     Args:
-        invalid_images: List of invalid image dicts with 'source' and 'error' keys
+        invalid_files: List of invalid file dicts with 'source' and 'error' keys
+        log_dir: Directory to save the log file
         
     Returns:
         str: Path to the created log file
     """
     try:
-        # Create logs directory if it doesn't exist
-        logs_dir = os.path.join(os.path.dirname(__file__), 'logs')
-        os.makedirs(logs_dir, exist_ok=True)
+        # Create logs directory if it doesn't exist (should be passed in)
+        os.makedirs(log_dir, exist_ok=True)
         
-        # Create filename with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_filename = f"invalid_images_{timestamp}.log"
-        log_path = os.path.join(logs_dir, log_filename)
+        # Filename inside the session folder
+        log_filename = "invalid_files.log"
+        log_path = os.path.join(log_dir, log_filename)
         
         with open(log_path, 'w', encoding='utf-8') as f:
             f.write(f"Invalid Images Log - Generated {datetime.now()}\n")
@@ -121,25 +120,24 @@ def _write_invalid_images_log(invalid_images):
         return None
 
 
-def _write_success_log(success_files):
+def _write_success_log(success_files, log_dir):
     """
     Write successfully copied files to a separate log file.
     
     Args:
         success_files: List of success dicts with 'source' and 'destination' keys
+        log_dir: Directory to save the log file
         
     Returns:
         str: Path to the created log file
     """
     try:
         # Create logs directory if it doesn't exist
-        logs_dir = os.path.join(os.path.dirname(__file__), 'logs')
-        os.makedirs(logs_dir, exist_ok=True)
+        os.makedirs(log_dir, exist_ok=True)
         
-        # Create filename with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_filename = f"success_report_{timestamp}.txt"
-        log_path = os.path.join(logs_dir, log_filename)
+        # Filename inside session folder
+        log_filename = "success_report.txt"
+        log_path = os.path.join(log_dir, log_filename)
         
         with open(log_path, 'w', encoding='utf-8') as f:
             f.write(f"Success Report - Generated {datetime.now()}\n")
@@ -159,7 +157,7 @@ def _write_success_log(success_files):
 
 
 
-def process_media(source_folder, dest_folder, move_files=False, progress_callback=None):
+def process_media(source_folder, dest_folder, move_files=False, log_dir=None, progress_callback=None):
     """
     Process all media files (images and videos) from source to destination.
     
@@ -167,6 +165,7 @@ def process_media(source_folder, dest_folder, move_files=False, progress_callbac
         source_folder: Source directory to scan
         dest_folder: Destination base directory
         move_files: Whether to move instead of copy
+        log_dir: Directory to save logs/reports
         progress_callback: Function to call with progress updates
                           Signature: callback(current, total, status_msg)
         
@@ -275,13 +274,13 @@ def process_media(source_folder, dest_folder, move_files=False, progress_callbac
     
     # Write invalid files log if any
     invalid_log_path = None
-    if invalid_files:
-        invalid_log_path = _write_invalid_images_log(invalid_files)
+    if invalid_files and log_dir:
+        invalid_log_path = _write_invalid_images_log(invalid_files, log_dir)
     
     # Write success log if any
     success_log_path = None
-    if success_files:
-        success_log_path = _write_success_log(success_files)
+    if success_files and log_dir:
+        success_log_path = _write_success_log(success_files, log_dir)
     
     logger.info(f"Processing complete. Success: {success_count} (Images: {image_count}, Videos: {video_count}), Duplicates: {duplicate_count}, Invalid: {invalid_count}, Errors: {error_count}")
     
