@@ -4,14 +4,14 @@ import logging
 from pathlib import Path
 from datetime import datetime
 from scanner import scan_folder
-from exif_reader import get_image_date, validate_image
+from exif_reader import get_media_date, validate_media, is_video_file
 
 logger = logging.getLogger(__name__)
 
 
-def copy_image(source_path, dest_base, date, move_files=False):
+def copy_file(source_path, dest_base, date, move_files=False):
     """
-    Copy or move image to destination with date-based structure.
+    Copy or move media file to destination with date-based structure.
     
     Args:
         source_path: Source file path
@@ -159,9 +159,9 @@ def _write_success_log(success_files):
 
 
 
-def process_images(source_folder, dest_folder, move_files=False, progress_callback=None):
+def process_media(source_folder, dest_folder, move_files=False, progress_callback=None):
     """
-    Process all images from source to destination.
+    Process all media files (images and videos) from source to destination.
     
     Args:
         source_folder: Source directory to scan
@@ -173,52 +173,56 @@ def process_images(source_folder, dest_folder, move_files=False, progress_callba
     Returns:
         dict with keys:
             - 'success_count': number of files processed
+            - 'image_count': number of images processed
+            - 'video_count': number of videos processed
             - 'duplicate_count': number of duplicates found
             - 'error_count': number of errors
-            - 'invalid_count': number of invalid images (cannot identify)
+            - 'invalid_count': number of invalid files (cannot identify)
             - 'duplicates': list of duplicate info dicts
             - 'errors': list of error info dicts
-            - 'invalid_images': list of invalid image info dicts
+            - 'invalid_files': list of invalid file info dicts
             - 'success_files': list of successfully processed files
-            - 'invalid_log_path': path to invalid images log
+            - 'invalid_log_path': path to invalid files log
             - 'success_log_path': path to success report
     """
-    logger.info(f"Processing images from {source_folder} to {dest_folder} (Move: {move_files})")
+    logger.info(f"Processing media from {source_folder} to {dest_folder} (Move: {move_files})")
     
     success_count = 0
+    image_count = 0
+    video_count = 0
     duplicate_count = 0
     error_count = 0
     invalid_count = 0
     duplicates = []
     errors = []
-    invalid_images = []
+    invalid_files = []
     success_files = []
     
-    # Get all image files
-    image_files = list(scan_folder(source_folder))
-    total_files = len(image_files)
+    # Get all media files
+    media_files = list(scan_folder(source_folder))
+    total_files = len(media_files)
     
-    logger.info(f"Found {total_files} images to process")
+    logger.info(f"Found {total_files} media files to process")
     
     if progress_callback:
         progress_callback(0, total_files, "Starting processing...")
     
-    for idx, source_path in enumerate(image_files, 1):
+    for idx, source_path in enumerate(media_files, 1):
         try:
-            # Validate image first
-            is_valid, error_msg = validate_image(source_path)
+            # Validate media file first
+            is_valid, error_msg = validate_media(source_path)
             
             if not is_valid:
-                logger.warning(f"Invalid image, skipping: {source_path}")
+                logger.warning(f"Invalid file, skipping: {source_path}")
                 invalid_count += 1
-                invalid_images.append({
+                invalid_files.append({
                     'source': source_path,
                     'error': error_msg
                 })
                 continue
             
-            # Extract date from image
-            date = get_image_date(source_path)
+            # Extract date from media
+            date = get_media_date(source_path)
             
             if not date:
                 logger.warning(f"Could not extract date from: {source_path}")
@@ -229,11 +233,16 @@ def process_images(source_folder, dest_folder, move_files=False, progress_callba
                 })
                 continue
             
-            # Process image (copy or move)
-            result = copy_image(source_path, dest_folder, date, move_files=move_files)
+            # Process file (copy or move)
+            result = copy_file(source_path, dest_folder, date, move_files=move_files)
             
             if result['success']:
                 success_count += 1
+                # Track image vs video count
+                if is_video_file(source_path):
+                    video_count += 1
+                else:
+                    image_count += 1
                 success_files.append({
                     'source': source_path,
                     'destination': result['dest_path']
@@ -264,27 +273,30 @@ def process_images(source_folder, dest_folder, move_files=False, progress_callba
                 'error': str(e)
             })
     
-    # Write invalid images log if any
+    # Write invalid files log if any
     invalid_log_path = None
-    if invalid_images:
-        invalid_log_path = _write_invalid_images_log(invalid_images)
+    if invalid_files:
+        invalid_log_path = _write_invalid_images_log(invalid_files)
     
     # Write success log if any
     success_log_path = None
     if success_files:
         success_log_path = _write_success_log(success_files)
     
-    logger.info(f"Processing complete. Success: {success_count}, Duplicates: {duplicate_count}, Invalid: {invalid_count}, Errors: {error_count}")
+    logger.info(f"Processing complete. Success: {success_count} (Images: {image_count}, Videos: {video_count}), Duplicates: {duplicate_count}, Invalid: {invalid_count}, Errors: {error_count}")
     
     return {
         'success_count': success_count,
+        'image_count': image_count,
+        'video_count': video_count,
         'duplicate_count': duplicate_count,
         'error_count': error_count,
         'invalid_count': invalid_count,
         'duplicates': duplicates,
         'errors': errors,
-        'invalid_images': invalid_images,
+        'invalid_files': invalid_files,
         'success_files': success_files,
         'invalid_log_path': invalid_log_path,
         'success_log_path': success_log_path
     }
+

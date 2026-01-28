@@ -1,33 +1,58 @@
-# Công Cụ Sắp Xếp Ảnh
+# Công Cụ Sắp Xếp Media
 
-Công cụ GUI Windows nhẹ để sắp xếp các tệp ảnh theo ngày EXIF thành cấu trúc thư mục có tổ chức.
+Công cụ GUI Windows nhẹ để sắp xếp các tệp ảnh và video theo ngày EXIF/Metadata thành cấu trúc thư mục có tổ chức.
 
 ## Tính Năng
 
+- **Hỗ Trợ Video**: Xử lý cả ảnh và video
 - **Icon Chuyên Nghiệp**: Biểu tượng ứng dụng tùy chỉnh chất lượng cao
 - **Tệp Thực Thi Duy Nhất**: Được đóng gói thành tệp `.exe` độc lập để dễ dàng di chuyển
 - **Quét Đệ Quy**: Quét thư mục nguồn với độ sâu không giới hạn
-- **Trích Xuất Ngày EXIF**: Trích xuất ngày từ metadata ảnh với cơ chế dự phòng thông minh
-- **Sắp Xếp Theo Ngày**: Tổ chức ảnh theo cấu trúc `YYYY/MM/DD/tên_tệp`
+- **Trích Xuất Metadata**: Trích xuất ngày từ EXIF (ảnh) và metadata FFmpeg (video) với cơ chế dự phòng thông minh
+- **Sắp Xếp Theo Ngày**: Tổ chức tệp theo cấu trúc `YYYY/MM/DD/tên_tệp`
 - **Phát Hiện Trùng Lặp**: Không bao giờ ghi đè các tệp hiện có
-- **Xem Xét Trùng Lặp Thủ Công**: So sánh ảnh cạnh nhau với các tùy chọn quyết định thủ công
-- **Tối Ưu Hiệu Suất**: Xử lý mượt mà hơn 10,000 ảnh
+- **Xem Xét Trùng Lặp Thủ Công**: So sánh cạnh nhau với các tùy chọn quyết định thủ công
+- **Tối Ưu Hiệu Suất**: Xử lý mượt mà hơn 10,000 tệp
 - **Giao Diện Phản Hồi**: Xử lý nền giữ cho giao diện luôn phản hồi
 - **Xử Lý Lỗi Toàn Diện**: Tiếp tục xử lý ngay cả khi gặp tệp bị hỏng
 
-## Định Dạng Ảnh Được Hỗ Trợ
+## Định Dạng Được Hỗ Trợ
 
+### Ảnh (Images)
 - `.jpg` / `.jpeg`
 - `.png`
 - `.heic`
 - `.webp`
+- `.gif`
+- `.bmp`
+- `.tiff`
+
+### Video
+- `.mp4`
+- `.mov`
+- `.avi`
+- `.mkv`
+- `.wmv`
+- `.flv`
+- `.webm`
+- `.m4v`
+- `.3gp`
 
 ## Thứ Tự Ưu Tiên Trích Xuất Ngày
 
+### Ảnh
 1. EXIF `DateTimeOriginal` (đáng tin cậy nhất)
 2. EXIF `DateTimeDigitized`
 3. EXIF `DateTime`
 4. Thời gian sửa đổi tệp (dự phòng)
+
+### Video
+1. Video `creation_time` metadata
+2. Thời gian sửa đổi tệp (dự phòng)
+
+## Yêu Cầu
+
+- **FFmpeg**: Cần thiết để trích xuất metadata video (phải có trong PATH hệ thống)
 
 ## Cài Đặt
 
@@ -54,6 +79,9 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```powershell
 pip install -r requirements.txt
 ```
+
+> **Lưu ý:** Để hỗ trợ video, bạn phải cài đặt FFmpeg và thêm vào PATH hệ thống.
+
 
 ## Sử Dụng
 

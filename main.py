@@ -1,7 +1,7 @@
 """
-Image Organization Tool - Main GUI
+Media Organization Tool - Main GUI
 
-A lightweight tool for organizing images by EXIF date.
+A lightweight tool for organizing images and videos by date.
 """
 
 import os
@@ -14,7 +14,7 @@ import logging
 from datetime import datetime
 
 from utils import setup_logging
-from copier import process_images
+from copier import process_media
 from duplicate_ui import DuplicateReviewWindow
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ class MainWindow:
             root: Tkinter root window
         """
         self.root = root
-        self.root.title("Image Organization Tool")
+        self.root.title("Media Organization Tool")
         self.root.geometry("700x600")
         
         # Set icon
@@ -203,8 +203,8 @@ class MainWindow:
             move_files: Whether to move instead of copy
         """
         try:
-            # Process images
-            results = process_images(
+            # Process media files (images and videos)
+            results = process_media(
                 source_folder,
                 dest_folder,
                 move_files=move_files,
@@ -268,7 +268,7 @@ class MainWindow:
         Handle processing completion.
         
         Args:
-            results: Results dict from process_images
+            results: Results dict from process_media
         """
         self.is_processing = False
         self.start_btn.config(state=tk.NORMAL)
@@ -279,14 +279,17 @@ class MainWindow:
         self._log("Processing Complete!")
         self._log(f"{'='*50}")
         action = "moved" if self.move_files.get() else "copied"
+        image_count = results.get('image_count', 0)
+        video_count = results.get('video_count', 0)
         self._log(f"Successfully {action}: {results['success_count']} files")
+        self._log(f"  - Images: {image_count}, Videos: {video_count}")
         self._log(f"Duplicates found: {results['duplicate_count']} files")
-        self._log(f"Invalid images (skipped): {results['invalid_count']} files")
+        self._log(f"Invalid files (skipped): {results['invalid_count']} files")
         self._log(f"Errors: {results['error_count']} files")
         
-        # Log invalid images info
+        # Log invalid files info
         if results['invalid_count'] > 0 and results.get('invalid_log_path'):
-            self._log(f"\nInvalid images log: {results['invalid_log_path']}")
+            self._log(f"\nInvalid files log: {results['invalid_log_path']}")
         
         # Log success report info
         if results['success_count'] > 0 and results.get('success_log_path'):
@@ -322,12 +325,15 @@ class MainWindow:
         self.status_label.config(text="Processing complete")
         
         label = "Moved" if self.move_files.get() else "Copied"
+        image_count = results.get('image_count', 0)
+        video_count = results.get('video_count', 0)
         messagebox.showinfo(
             "Complete",
             f"Processing complete!\n\n"
             f"{label}: {results['success_count']}\n"
+            f"  (Images: {image_count}, Videos: {video_count})\n"
             f"Duplicates: {results['duplicate_count']}\n"
-            f"Invalid images: {results['invalid_count']}\n"
+            f"Invalid files: {results['invalid_count']}\n"
             f"Errors: {results['error_count']}"
         )
     
@@ -412,7 +418,7 @@ def main():
     # Setup logging
     setup_logging()
     
-    logger.info("Starting Image Organization Tool")
+    logger.info("Starting Media Organization Tool")
     
     # Create GUI
     root = tk.Tk()

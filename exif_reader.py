@@ -1,11 +1,17 @@
 """
-EXIF Date Extraction Module
+Media Date Extraction Module
 
-Extracts date information from image files with fallback logic:
+Extracts date information from image and video files with fallback logic:
+
+For Images:
 1. EXIF DateTimeOriginal
 2. EXIF DateTimeDigitized
 3. EXIF DateTime
 4. Filesystem modified time (fallback)
+
+For Videos:
+1. Video creation_time metadata
+2. Filesystem modified time (fallback)
 """
 
 import os
@@ -13,6 +19,9 @@ import logging
 from datetime import datetime
 from PIL import Image
 from PIL.ExifTags import TAGS
+
+from scanner import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
+from video_reader import validate_video, get_video_date
 
 logger = logging.getLogger(__name__)
 
@@ -148,3 +157,63 @@ def _get_file_modified_date(file_path):
     except Exception as e:
         logger.error(f"Could not get modified time for {file_path}: {e}")
         return None
+
+
+def is_video_file(file_path):
+    """
+    Check if file is a video based on extension.
+    
+    Args:
+        file_path: Path to file
+        
+    Returns:
+        bool: True if video file, False otherwise
+    """
+    _, ext = os.path.splitext(file_path)
+    return ext.lower() in VIDEO_EXTENSIONS
+
+
+def is_image_file(file_path):
+    """
+    Check if file is an image based on extension.
+    
+    Args:
+        file_path: Path to file
+        
+    Returns:
+        bool: True if image file, False otherwise
+    """
+    _, ext = os.path.splitext(file_path)
+    return ext.lower() in IMAGE_EXTENSIONS
+
+
+def validate_media(file_path):
+    """
+    Validate if file is a valid media file (image or video).
+    
+    Args:
+        file_path: Path to media file
+        
+    Returns:
+        tuple: (is_valid: bool, error_message: str or None)
+    """
+    if is_video_file(file_path):
+        return validate_video(file_path)
+    else:
+        return validate_image(file_path)
+
+
+def get_media_date(file_path):
+    """
+    Extract date from media file (image or video).
+    
+    Args:
+        file_path: Path to media file
+        
+    Returns:
+        datetime object or None if all methods fail
+    """
+    if is_video_file(file_path):
+        return get_video_date(file_path)
+    else:
+        return get_image_date(file_path)

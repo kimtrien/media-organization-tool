@@ -1,7 +1,7 @@
 """
-File Scanner Module
+Media Scanner Module
 
-Recursively scans directories for image files.
+Recursively scans directories for image and video files.
 """
 
 import os
@@ -10,7 +10,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Supported image extensions
-SUPPORTED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.heic', '.webp'}
+IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.heic', '.webp', '.gif', '.bmp', '.tiff', '.tif'}
+
+# Supported video extensions
+VIDEO_EXTENSIONS = {'.mp4', '.mov', '.avi', '.mkv', '.wmv', '.flv', '.webm', '.m4v', '.3gp'}
+
+# Combined supported extensions
+SUPPORTED_EXTENSIONS = IMAGE_EXTENSIONS | VIDEO_EXTENSIONS
 
 
 def scan_folder(folder_path, extensions=None):

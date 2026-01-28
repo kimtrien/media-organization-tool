@@ -1,33 +1,58 @@
-# Image Organization Tool
+# Media Organization Tool
 
-A lightweight Windows GUI tool for organizing image files by their EXIF date into a structured folder hierarchy.
+A lightweight Windows GUI tool for organizing image and video files by their EXIF/Metadata date into a structured folder hierarchy.
 
 ## Features
 
+- **Video Support**: Handles both images and videos
 - **Professional Icon**: Custom high-quality application icon
 - **Single Executable**: Built as a standalone `.exe` for easy portability
 - **Recursive Scanning**: Scans source folder at unlimited depth
-- **EXIF Date Extraction**: Extracts date from image metadata with intelligent fallback
-- **Date-Based Organization**: Organizes images into `YYYY/MM/DD/filename` structure
+- **Metadata Extraction**: Extracts date from EXIF (images) and FFmpeg metadata (videos) with intelligent fallback
+- **Date-Based Organization**: Organizes files into `YYYY/MM/DD/filename` structure
 - **Duplicate Detection**: Never overwrites existing files
-- **Manual Duplicate Review**: Side-by-side image comparison with manual decision options
-- **Performance Optimized**: Handles 10,000+ images smoothly
+- **Manual Duplicate Review**: Side-by-side comparison with manual decision options
+- **Performance Optimized**: Handles 10,000+ files smoothly
 - **Responsive UI**: Background processing keeps interface responsive
 - **Comprehensive Error Handling**: Continues processing even with corrupted files
 
-## Supported Image Formats
+## Supported Formats
 
+### Images
 - `.jpg` / `.jpeg`
 - `.png`
 - `.heic`
 - `.webp`
+- `.gif`
+- `.bmp`
+- `.tiff`
+
+### Videos
+- `.mp4`
+- `.mov`
+- `.avi`
+- `.mkv`
+- `.wmv`
+- `.flv`
+- `.webm`
+- `.m4v`
+- `.3gp`
 
 ## Date Extraction Priority
 
+### Images
 1. EXIF `DateTimeOriginal` (most reliable)
 2. EXIF `DateTimeDigitized`
 3. EXIF `DateTime`
 4. Filesystem modified time (fallback)
+
+### Videos
+1. Video `creation_time` metadata
+2. Filesystem modified time (fallback)
+
+## Requirements
+
+- **FFmpeg**: Required for video metadata extraction (must be in system PATH)
 
 ## Installation
 
@@ -54,6 +79,9 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```powershell
 pip install -r requirements.txt
 ```
+
+> **Note:** For video support, you must have FFmpeg installed and added to your system PATH.
+
 
 ## Usage
 
