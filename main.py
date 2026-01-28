@@ -59,11 +59,15 @@ class MainWindow:
         self._start_queue_monitor()
 
     def _get_config_path(self):
-        """Get path to config file in AppData."""
-        app_data = os.getenv('APPDATA')
-        config_dir = os.path.join(app_data, 'MediaOrganizer')
-        os.makedirs(config_dir, exist_ok=True)
-        return os.path.join(config_dir, 'config.json')
+        """Get path to config file in current directory."""
+        if getattr(sys, 'frozen', False):
+            # Running as compiled exe
+            application_path = os.path.dirname(sys.executable)
+        else:
+            # Running as script
+            application_path = os.path.dirname(os.path.abspath(__file__))
+            
+        return os.path.join(application_path, 'config.json')
 
     def _load_config(self):
         """Load configuration from file."""
