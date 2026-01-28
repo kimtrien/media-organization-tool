@@ -175,13 +175,13 @@ class MainWindow:
             options_frame,
             text="Move files instead of copying (delete source after processing)",
             variable=self.move_files
-        ).pack(side=tk.LEFT, padx=5)
+        ).pack(anchor=tk.W, padx=5, pady=2)
         
         ttk.Checkbutton(
             options_frame,
             text="Delete duplicate source files (Strict Check)",
             variable=self.delete_duplicates
-        ).pack(side=tk.LEFT, padx=5)
+        ).pack(anchor=tk.W, padx=5, pady=2)
         
         # Start button
         button_frame = ttk.Frame(main_frame)
