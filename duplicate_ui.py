@@ -142,6 +142,14 @@ class DuplicateReviewWindow:
         self.status_label.pack(side=tk.RIGHT, padx=5)
         
         self._update_status()
+        
+        # Bind keyboard shortcuts
+        self.window.bind('<Left>', lambda e: self._on_prev())
+        self.window.bind('<Right>', lambda e: self._on_next())
+        self.window.bind('x', lambda e: self._on_mark_toggle())
+        
+        # Set focus to window to capture keys
+        self.window.focus_set()
     
     def _load_current_duplicate(self):
         """Load and display current duplicate pair."""
@@ -297,6 +305,13 @@ class DuplicateReviewWindow:
     def _load_image_thread(self, image_path, label, is_source, target_index):
         """Background thread for loading image."""
         try:
+            # Check if video (simple extension check)
+            ext = os.path.splitext(image_path)[1].lower()
+            if ext in ['.mp4', '.mov', '.avi', '.mkv', '.m4v']:
+                # Is video, show placeholder
+                self.window.after(0, lambda: label.config(image='', text="[Video File]\nNo Preview Available\nUse 'Open File' to view"))
+                return
+
             # Perform heavy lifting
             img = Image.open(image_path)
             img.thumbnail((400, 400), Image.Resampling.LANCZOS)
