@@ -10,6 +10,7 @@ from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
 import logging
 import threading
+from send2trash import send2trash
 
 logger = logging.getLogger(__name__)
 
@@ -245,7 +246,7 @@ class DuplicateReviewWindow:
             return
             
         count = len(self.marked_indices)
-        if not messagebox.askyesno("Confirm Batch Delete", f"Are you sure you want to delete {count} source files?"):
+        if not messagebox.askyesno("Confirm Batch Delete", f"Are you sure you want to send {count} source files to the Recycle Bin?"):
             return
             
         deleted_count = 0
@@ -253,8 +254,9 @@ class DuplicateReviewWindow:
         for index in sorted(list(self.marked_indices), reverse=True):
             dup = self.duplicates[index]
             try:
-                os.remove(dup['source'])
-                logger.info(f"Deleted source file: {dup['source']}")
+                # Use send2trash for safety
+                send2trash(os.path.normpath(dup['source']))
+                logger.info(f"Sent to Recycle Bin: {dup['source']}")
                 
                 # Remove from duplicates list
                 self.duplicates.pop(index)
@@ -267,7 +269,7 @@ class DuplicateReviewWindow:
         # Clear marks
         self.marked_indices.clear()
         
-        messagebox.showinfo("Complete", f"Deleted {deleted_count} files.")
+        messagebox.showinfo("Complete", f"Sent {deleted_count} files to Recycle Bin.")
         
         # Reset view
         self.current_index = 0
