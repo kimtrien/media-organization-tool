@@ -27,15 +27,18 @@ class DuplicateReviewWindow:
         self.parent = parent
         self.duplicates = duplicates.copy()  # Work with a copy
         self.current_index = 0
+        self.marked_indices = set()
         
         # Create window
         self.window = tk.Toplevel(parent)
         self.window.title("Duplicate Review")
         self.window.geometry("1000x700")
         
-        # Store PhotoImage references to prevent garbage collection
         self.source_photo = None
         self.existing_photo = None
+        
+        # UI State
+        self.mark_delete_var = tk.BooleanVar(value=False)
         
         self._build_ui()
         self._load_current_duplicate()
@@ -58,9 +61,17 @@ class DuplicateReviewWindow:
         self.duplicate_list.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         list_scroll.config(command=self.duplicate_list.yview)
         
-        # Binary match indicator
         self.match_label = ttk.Label(list_frame, text="", font=('TkDefaultFont', 9, 'bold'))
         self.match_label.pack(side=tk.BOTTOM, pady=5)
+        
+        # Batch Process Button
+        self.process_btn = ttk.Button(
+            list_frame, 
+            text="DELETE MARKED FILES NOW", 
+            command=self._on_process_batch,
+            state=tk.DISABLED
+        )
+        self.process_btn.pack(side=tk.BOTTOM, fill=tk.X, pady=5)
         
         # Populate list
         for dup in self.duplicates:
@@ -97,30 +108,32 @@ class DuplicateReviewWindow:
         
         ttk.Button(existing_frame, text="Open File", command=lambda: self._open_file(False)).pack(pady=5)
         
-        # Bottom frame: action buttons
         button_frame = ttk.Frame(self.window, padding=10)
         button_frame.pack(fill=tk.X, padx=10, pady=5)
         
-        self.skip_btn = ttk.Button(
-            button_frame,
-            text="Skip (Keep Both)",
-            command=self._on_skip
-        )
-        self.skip_btn.pack(side=tk.LEFT, padx=5)
+        # Navigation
+        ttk.Button(button_frame, text="< Previous", command=self._on_prev).pack(side=tk.LEFT, padx=2)
+        ttk.Button(button_frame, text="Next >", command=self._on_next).pack(side=tk.LEFT, padx=2)
         
+        # Separator
+        ttk.Separator(button_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=10)
+        
+        # Mark for deletion checkbox
+        self.mark_check = ttk.Checkbutton(
+            button_frame, 
+            text="Mark to DELETE Source", 
+            variable=self.mark_delete_var,
+            command=self._on_mark_toggle
+        )
+        self.mark_check.pack(side=tk.LEFT, padx=10)
+        
+        # Replace remaining immediate action
         self.replace_btn = ttk.Button(
             button_frame,
-            text="Replace Existing with Source",
+            text="Replace Existing (Immediate)",
             command=self._on_replace
         )
-        self.replace_btn.pack(side=tk.LEFT, padx=5)
-        
-        self.delete_source_btn = ttk.Button(
-            button_frame,
-            text="Keep Existing, Delete Source",
-            command=self._on_delete_source
-        )
-        self.delete_source_btn.pack(side=tk.LEFT, padx=5)
+        self.replace_btn.pack(side=tk.LEFT, padx=10)
         
         # Status label
         self.status_label = ttk.Label(button_frame, text="")
@@ -154,7 +167,95 @@ class DuplicateReviewWindow:
         else:
             self.match_label.config(text="")
             
+        # Update checkbox state without triggering event
+        is_marked = self.current_index in self.marked_indices
+        self.mark_delete_var.set(is_marked)
+        
         self._update_status()
+
+    def _on_mark_toggle(self):
+        """Handle mark checkbox toggle."""
+        if self.mark_delete_var.get():
+            self.marked_indices.add(self.current_index)
+        else:
+            self.marked_indices.discard(self.current_index)
+            
+        self._refresh_list_item(self.current_index)
+        self._update_process_btn()
+        
+    def _refresh_list_item(self, index):
+        """Update listbox text for item."""
+        if 0 <= index < len(self.duplicates):
+            name = os.path.basename(self.duplicates[index]['source'])
+            if index in self.marked_indices:
+                name = f"[DEL] {name}"
+                self.duplicate_list.itemconfig(index, foreground='red')
+            else:
+                self.duplicate_list.itemconfig(index, foreground='')
+            
+            self.duplicate_list.delete(index)
+            self.duplicate_list.insert(index, name)
+            
+            # Reselect if needed
+            if index == self.current_index:
+                self.duplicate_list.selection_set(index)
+
+    def _update_process_btn(self):
+        """Update state of process button."""
+        if self.marked_indices:
+            self.process_btn.config(state=tk.NORMAL, text=f"DELETE {len(self.marked_indices)} MARKED FILES")
+        else:
+            self.process_btn.config(state=tk.DISABLED, text="DELETE MARKED FILES NOW")
+
+    def _on_prev(self):
+        """Go to previous item."""
+        if self.current_index > 0:
+            self.current_index -= 1
+            self._load_current_duplicate()
+            
+    def _on_next(self):
+        """Go to next item."""
+        if self.current_index < len(self.duplicates) - 1:
+            self.current_index += 1
+            self._load_current_duplicate()
+
+    def _on_process_batch(self):
+        """Process deletion of all marked files."""
+        if not self.marked_indices:
+            return
+            
+        count = len(self.marked_indices)
+        if not messagebox.askyesno("Confirm Batch Delete", f"Are you sure you want to delete {count} source files?"):
+            return
+            
+        deleted_count = 0
+        # Sort indices in reverse order to remove safely
+        for index in sorted(list(self.marked_indices), reverse=True):
+            dup = self.duplicates[index]
+            try:
+                os.remove(dup['source'])
+                logger.info(f"Deleted source file: {dup['source']}")
+                
+                # Remove from duplicates list
+                self.duplicates.pop(index)
+                self.duplicate_list.delete(index)
+                deleted_count += 1
+                
+            except Exception as e:
+                logger.error(f"Error deleting {dup['source']}: {e}")
+        
+        # Clear marks
+        self.marked_indices.clear()
+        
+        messagebox.showinfo("Complete", f"Deleted {deleted_count} files.")
+        
+        # Reset view
+        self.current_index = 0
+        if self.duplicates:
+            self._load_current_duplicate()
+        else:
+            self._show_completion()
+        self._update_process_btn()
 
     def _open_file(self, is_source):
         """Open file in default viewer."""
@@ -213,8 +314,7 @@ class DuplicateReviewWindow:
     
     def _on_skip(self):
         """Skip to next duplicate (keep both files)."""
-        self.current_index += 1
-        self._load_current_duplicate()
+        self._on_next()
     
     def _on_replace(self):
         """Replace existing file with source."""
@@ -247,40 +347,16 @@ class DuplicateReviewWindow:
                 logger.error(f"Error replacing file: {e}")
                 messagebox.showerror("Error", f"Failed to replace file:\n{e}")
     
+    
     def _on_delete_source(self):
-        """Delete source file, keep existing."""
-        if not self.duplicates or self.current_index >= len(self.duplicates):
-            return
-        
-        dup = self.duplicates[self.current_index]
-        
-        # Confirm action
-        msg = f"Delete source file?\n\n{dup['source']}"
-        if dup.get('is_identical'):
-             msg = f"✅ Files are identical.\n\n" + msg
-        else:
-             msg = f"⚠️ Files are NOT identical (Binary mistmatch).\n\n" + msg
-             
-        result = messagebox.askyesno(
-            "Confirm Delete",
-            msg
-        )
-        
-        if result:
-            try:
-                os.remove(dup['source'])
-                logger.info(f"Deleted source file: {dup['source']}")
-                
-                # Remove from list
-                self.duplicates.pop(self.current_index)
-                self.duplicate_list.delete(self.current_index)
-                
-                # Load next
-                self._load_current_duplicate()
-                
-            except Exception as e:
-                logger.error(f"Error deleting file: {e}")
-                messagebox.showerror("Error", f"Failed to delete file:\n{e}")
+        """
+        Delete source file (Legacy single action, kept for compatibility if needed).
+        Currently replaced by batch delete, but keeping just in case.
+        """
+        self._on_mark_toggle() # Just mark it instead of deleting immediately?
+        # Better: Reuse the logic but confirm immediately?
+        # No, user wants batch. This button was removed from UI anyway.
+        pass
     
     def _update_status(self):
         """Update status label."""
@@ -299,8 +375,8 @@ class DuplicateReviewWindow:
         self.existing_path_label.config(text="")
         
         # Disable buttons
-        self.skip_btn.config(state=tk.DISABLED)
+        # Disable buttons
         self.replace_btn.config(state=tk.DISABLED)
-        self.delete_source_btn.config(state=tk.DISABLED)
+        self.mark_check.config(state=tk.DISABLED)
         
         self._update_status()
