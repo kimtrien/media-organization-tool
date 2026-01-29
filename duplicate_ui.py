@@ -63,10 +63,12 @@ class DuplicateReviewWindow:
         self.duplicate_list.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         list_scroll.config(command=self.duplicate_list.yview)
         
-        self.match_label = ttk.Label(list_frame, text="", font=('TkDefaultFont', 9, 'bold'))
-        self.match_label.pack(side=tk.BOTTOM, pady=5)
         
-        # Batch Process Button
+        # Controls Frame (Prev, Next, Mark) - inside list_frame
+        # Pack order: We want [List] -> [Controls] -> [Match Label] -> [Process Btn]
+        # Since we use side=BOTTOM, we pack in REVERSE order of appearance from bottom up.
+        
+        # 4. Batch Process Button (Bottom-most)
         self.process_btn = ttk.Button(
             list_frame, 
             text="DELETE MARKED FILES NOW", 
@@ -75,7 +77,30 @@ class DuplicateReviewWindow:
         )
         self.process_btn.pack(side=tk.BOTTOM, fill=tk.X, pady=5)
         
-        # Populate list
+        # 3. Binary match indicator (Above Process Btn)
+        self.match_label = ttk.Label(list_frame, text="", font=('TkDefaultFont', 9, 'bold'))
+        self.match_label.pack(side=tk.BOTTOM, pady=5)
+        
+        # 2. Controls Frame (Above Match Label)
+        controls_frame = ttk.Frame(list_frame)
+        controls_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=5)
+        
+        # Navigation in Controls Frame
+        ttk.Button(controls_frame, text="< Prev", command=self._on_prev).pack(side=tk.LEFT, padx=2)
+        ttk.Button(controls_frame, text="Next >", command=self._on_next).pack(side=tk.LEFT, padx=2)
+        
+        ttk.Separator(controls_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=10)
+        
+        # Mark Checkbox in Controls Frame
+        self.mark_check = ttk.Checkbutton(
+            controls_frame, 
+            text="Mark to DELETE", 
+            variable=self.mark_delete_var,
+            command=self._on_mark_toggle
+        )
+        self.mark_check.pack(side=tk.LEFT, padx=5)
+        
+        # 1. Populate list (Takes remaining space)
         for dup in self.duplicates:
             self.duplicate_list.insert(tk.END, os.path.basename(dup['source']))
         
@@ -112,23 +137,6 @@ class DuplicateReviewWindow:
         
         button_frame = ttk.Frame(self.window, padding=10)
         button_frame.pack(fill=tk.X, padx=10, pady=5)
-        
-        # Navigation
-        ttk.Button(button_frame, text="< Previous", command=self._on_prev).pack(side=tk.LEFT, padx=2)
-        ttk.Button(button_frame, text="Next >", command=self._on_next).pack(side=tk.LEFT, padx=2)
-        
-        # Separator
-        ttk.Separator(button_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=10)
-        
-        # Mark for deletion checkbox
-        self.mark_check = ttk.Checkbutton(
-            button_frame, 
-            text="Mark to DELETE Source", 
-            variable=self.mark_delete_var,
-            command=self._on_mark_toggle
-        )
-        self.mark_check.pack(side=tk.LEFT, padx=10)
-        
         
         # Status label
         self.status_label = ttk.Label(button_frame, text="")
