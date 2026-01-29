@@ -9,6 +9,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
 import logging
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ class DuplicateReviewWindow:
         
         # UI State
         self.mark_delete_var = tk.BooleanVar(value=False)
+        self.load_counter = 0
         
         self._build_ui()
         self._load_current_duplicate()
@@ -272,38 +274,58 @@ class DuplicateReviewWindow:
     
     def _load_image_preview(self, image_path, label, path_label, is_source=True):
         """
-        Load and display image preview.
-        
-        Args:
-            image_path: Path to image file
-            label: Label widget to display image
-            path_label: Label widget to display path
-            is_source: Whether this is the source image
+        Load and display image preview asynchronously.
         """
+        # Update path immediately
+        path_label.config(text=image_path)
+        label.config(image='', text="Loading...")
+        
+        # Increment counter to invalidate previous requests for this slot
+        # We need separate counters for source/existing or just one global? 
+        # Simpler: pass current counter value to thread
+        self.load_counter += 1
+        # Capture current index to validate later
+        target_index = self.current_index
+        
+        thread = threading.Thread(
+            target=self._load_image_thread,
+            args=(image_path, label, is_source, target_index),
+            daemon=True
+        )
+        thread.start()
+
+    def _load_image_thread(self, image_path, label, is_source, target_index):
+        """Background thread for loading image."""
         try:
-            # Load image
+            # Perform heavy lifting
             img = Image.open(image_path)
-            
-            # Resize to fit (max 400x400)
             img.thumbnail((400, 400), Image.Resampling.LANCZOS)
-            
-            # Convert to PhotoImage
             photo = ImageTk.PhotoImage(img)
             
-            # Store reference to prevent garbage collection
+            # Update UI on main thread
+            self.window.after(0, lambda: self._update_image_ui(label, photo, is_source, target_index))
+            
+        except Exception as e:
+            logger.error(f"Error loading preview for {image_path}: {e}")
+            msg = f"Error loading image:\n{e}"
+            self.window.after(0, lambda: label.config(text=msg))
+
+    def _update_image_ui(self, label, photo, is_source, target_index):
+        """Update UI with loaded image if we are still on the same item."""
+        if target_index != self.current_index:
+            return 
+            
+        try:
+            # Store reference
             if is_source:
                 self.source_photo = photo
             else:
                 self.existing_photo = photo
-            
-            # Display
-            label.config(image=photo)
-            path_label.config(text=image_path)
-            
+                
+            label.config(image=photo, text="")
         except Exception as e:
-            logger.error(f"Error loading preview for {image_path}: {e}")
-            label.config(text=f"Error loading image:\n{e}")
-            path_label.config(text=image_path)
+            logger.error(f"Error updating UI: {e}") 
+
     
     def _on_list_select(self, event):
         """Handle listbox selection."""
