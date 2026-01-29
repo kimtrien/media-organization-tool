@@ -43,6 +43,11 @@ class DuplicateReviewWindow:
         self.mark_delete_var = tk.BooleanVar(value=False)
         self.load_counter = 0
         
+        # Auto-mark identical files
+        for i, dup in enumerate(self.duplicates):
+            if dup.get('is_identical', False):
+                self.marked_indices.add(i)
+        
         self._build_ui()
         self._load_current_duplicate()
     
@@ -102,8 +107,19 @@ class DuplicateReviewWindow:
         self.mark_check.pack(side=tk.LEFT, padx=5)
         
         # 1. Populate list (Takes remaining space)
-        for dup in self.duplicates:
-            self.duplicate_list.insert(tk.END, os.path.basename(dup['source']))
+        for i, dup in enumerate(self.duplicates):
+            name = os.path.basename(dup['source'])
+            self.duplicate_list.insert(tk.END, name)
+            
+            # Apply formatting for marked items immediately
+            if i in self.marked_indices:
+                self.duplicate_list.itemconfig(i, foreground='red')
+                self.duplicate_list.delete(i) # Replace with marked text
+                self.duplicate_list.insert(i, f"[DEL] {name}")
+                self.duplicate_list.itemconfig(i, foreground='red')
+        
+        # Update button state initially
+        self._update_process_btn()
         
         # Bind selection
         self.duplicate_list.bind('<<ListboxSelect>>', self._on_list_select)
