@@ -129,13 +129,6 @@ class DuplicateReviewWindow:
         )
         self.mark_check.pack(side=tk.LEFT, padx=10)
         
-        # Replace remaining immediate action
-        self.replace_btn = ttk.Button(
-            button_frame,
-            text="Replace Existing (Immediate)",
-            command=self._on_replace
-        )
-        self.replace_btn.pack(side=tk.LEFT, padx=10)
         
         # Status label
         self.status_label = ttk.Label(button_frame, text="")
@@ -362,37 +355,6 @@ class DuplicateReviewWindow:
         """Skip to next duplicate (keep both files)."""
         self._on_next()
     
-    def _on_replace(self):
-        """Replace existing file with source."""
-        if not self.duplicates or self.current_index >= len(self.duplicates):
-            return
-        
-        dup = self.duplicates[self.current_index]
-        
-        # Confirm action
-        result = messagebox.askyesno(
-            "Confirm Replace",
-            f"Replace existing file with source?\n\nExisting: {dup['existing']}\nSource: {dup['source']}"
-        )
-        
-        if result:
-            try:
-                import shutil
-                # Replace file
-                shutil.copy2(dup['source'], dup['existing'])
-                logger.info(f"Replaced {dup['existing']} with {dup['source']}")
-                
-                # Remove from list
-                self.duplicates.pop(self.current_index)
-                self.duplicate_list.delete(self.current_index)
-                
-                # Load next
-                self._load_current_duplicate()
-                
-            except Exception as e:
-                logger.error(f"Error replacing file: {e}")
-                messagebox.showerror("Error", f"Failed to replace file:\n{e}")
-    
     
     def _on_delete_source(self):
         """
@@ -422,7 +384,6 @@ class DuplicateReviewWindow:
         
         # Disable buttons
         # Disable buttons
-        self.replace_btn.config(state=tk.DISABLED)
         self.mark_check.config(state=tk.DISABLED)
         
         self._update_status()
