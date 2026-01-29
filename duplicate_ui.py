@@ -143,13 +143,20 @@ class DuplicateReviewWindow:
         
         self._update_status()
         
-        # Bind keyboard shortcuts
+        # Bind keyboard shortcuts to Window (global)
         self.window.bind('<Left>', lambda e: self._on_prev())
         self.window.bind('<Right>', lambda e: self._on_next())
         self.window.bind('x', lambda e: self._on_mark_toggle())
-        self.window.bind('X', lambda e: self._on_mark_toggle())  # Case insensitive
-        self.window.bind('<space>', lambda e: self._on_mark_toggle()) # Space bar
+        self.window.bind('X', lambda e: self._on_mark_toggle())
+        self.window.bind('<space>', lambda e: self._on_mark_toggle())
         
+        # Bind specifically to Listbox (it may trap keys)
+        self.duplicate_list.bind('<Left>', lambda e: self._on_prev())
+        self.duplicate_list.bind('<Right>', lambda e: self._on_next())
+        self.duplicate_list.bind('x', lambda e: self._on_mark_toggle())
+        self.duplicate_list.bind('X', lambda e: self._on_mark_toggle())
+        self.duplicate_list.bind('<space>', lambda e: self._on_mark_toggle())
+
         # Set focus to capture keys
         self.window.after(100, lambda: self.window.focus_force())
     
