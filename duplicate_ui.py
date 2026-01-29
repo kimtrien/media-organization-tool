@@ -145,11 +145,20 @@ class DuplicateReviewWindow:
         
         # Bind keyboard shortcuts
         self.window.bind('<Left>', lambda e: self._on_prev())
+        self.window.bind('<Up>', lambda e: self._on_prev())
         self.window.bind('<Right>', lambda e: self._on_next())
+        self.window.bind('<Down>', lambda e: self._on_next())
         self.window.bind('x', lambda e: self._on_mark_toggle())
+        self.window.bind('X', lambda e: self._on_mark_toggle())
+        self.window.bind('<space>', lambda e: self._on_mark_toggle())
+        
+        # Also bind to listbox specifically to ensure arrows work even if focused
+        self.duplicate_list.bind('<Left>', lambda e: self._on_prev())
+        self.duplicate_list.bind('<Right>', lambda e: self._on_next())
+        # Note: Up/Down on listbox defaults to selection change, but we sync selection anyway.
         
         # Set focus to window to capture keys
-        self.window.focus_set()
+        self.duplicate_list.focus_set() # Focus listbox by default
     
     def _load_current_duplicate(self):
         """Load and display current duplicate pair."""
