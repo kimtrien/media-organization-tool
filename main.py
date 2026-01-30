@@ -353,6 +353,7 @@ class MainWindow:
                         self.progress_bar['value'] = percent
                     # Update status
                     self.status_label.config(text=status)
+                    self._log(status)
                     
                 elif msg_type == 'complete':
                     self._on_processing_complete(data)

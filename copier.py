@@ -225,6 +225,8 @@ def process_media(source_folder, dest_folder, move_files=False, delete_duplicate
             
             if not is_valid:
                 logger.warning(f"Invalid file, skipping: {source_path}")
+                if progress_callback:
+                    progress_callback(idx, total_files, f"Skipped (invalid): {os.path.basename(source_path)}")
                 invalid_count += 1
                 invalid_files.append({
                     'source': source_path,
@@ -237,6 +239,8 @@ def process_media(source_folder, dest_folder, move_files=False, delete_duplicate
             
             if not date:
                 logger.warning(f"Could not extract date from: {source_path}")
+                if progress_callback:
+                    progress_callback(idx, total_files, f"Skipped (no date): {os.path.basename(source_path)}")
                 error_count += 1
                 errors.append({
                     'source': source_path,
@@ -266,6 +270,8 @@ def process_media(source_folder, dest_folder, move_files=False, delete_duplicate
                 })
             elif result['is_duplicate']:
                 duplicate_count += 1
+                if progress_callback:
+                    progress_callback(idx, total_files, f"Duplicate found: {os.path.basename(source_path)}")
                 duplicates.append({
                     'source': source_path,
                     'existing': result['dest_path'],
@@ -273,14 +279,16 @@ def process_media(source_folder, dest_folder, move_files=False, delete_duplicate
                 })
             else:
                 error_count += 1
+                if progress_callback:
+                    progress_callback(idx, total_files, f"Error: {result['error']} - {os.path.basename(source_path)}")
                 errors.append({
                     'source': source_path,
                     'error': result['error']
                 })
             
-            # Update progress (batch updates every 10 files)
+            # Update progress (batch updates every 10 files for performance, but show filename)
             if progress_callback and (idx % 10 == 0 or idx == total_files):
-                status = f"Processing {idx}/{total_files}: {os.path.basename(source_path)}"
+                status = f"Processed {idx}/{total_files} files..."
                 progress_callback(idx, total_files, status)
                 
         except Exception as e:
