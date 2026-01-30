@@ -513,7 +513,7 @@ class MainWindow:
             duplicates: List of duplicate dicts
         """
         try:
-            DuplicateReviewWindow(self.root, duplicates)
+            DuplicateReviewWindow(self.root, duplicates, progress_callback=self._progress_callback)
         except Exception as e:
             logger.error(f"Error opening duplicate review: {e}")
             messagebox.showerror("Error", f"Failed to open duplicate review:\n{e}")

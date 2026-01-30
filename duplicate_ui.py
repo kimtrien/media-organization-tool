@@ -18,16 +18,18 @@ logger = logging.getLogger(__name__)
 class DuplicateReviewWindow:
     """Window for manually reviewing and handling duplicate files."""
     
-    def __init__(self, parent, duplicates):
+    def __init__(self, parent, duplicates, progress_callback=None):
         """
         Initialize duplicate review window.
         
         Args:
             parent: Parent tkinter window
             duplicates: List of duplicate dicts with 'source' and 'existing' keys
+            progress_callback: Optional callback for progress updates
         """
         self.parent = parent
         self.duplicates = duplicates.copy()  # Work with a copy
+        self.progress_callback = progress_callback
         self.current_index = 0
         self.marked_indices = set()
         
@@ -82,6 +84,20 @@ class DuplicateReviewWindow:
             state=tk.DISABLED
         )
         self.process_btn.pack(side=tk.BOTTOM, fill=tk.X, pady=5)
+        
+        # 3.5 Progress indication (New)
+        self.progress_frame = ttk.Frame(list_frame)
+        self.progress_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=2)
+        
+        self.delete_progress = ttk.Progressbar(
+            self.progress_frame,
+            mode='determinate',
+            maximum=100
+        )
+        self.delete_progress.pack(fill=tk.X)
+        self.delete_progress_label = ttk.Label(self.progress_frame, text="", font=('TkDefaultFont', 8))
+        self.delete_progress_label.pack()
+        self.progress_frame.pack_forget() # Hide initially
         
         # 3. Binary match indicator (Above Process Btn)
         self.match_label = ttk.Label(list_frame, text="", font=('TkDefaultFont', 9, 'bold'))
@@ -265,26 +281,94 @@ class DuplicateReviewWindow:
         if not messagebox.askyesno("Confirm Batch Delete", f"Are you sure you want to send {count} source files to the Recycle Bin?"):
             return
             
+        # UI state for processing
+        self.process_btn.config(state=tk.DISABLED)
+        self.progress_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=5, before=self.process_btn)
+        self.delete_progress['value'] = 0
+        self.delete_progress['maximum'] = count
+        self.delete_progress_label.config(text="Starting deletion...")
+        
+        # Disable navigation and mark checkbox
+        self.duplicate_list.config(state=tk.DISABLED)
+        self.mark_check.config(state=tk.DISABLED)
+        
+        # Start background thread
+        thread = threading.Thread(
+            target=self._process_deletion_thread,
+            args=(sorted(list(self.marked_indices), reverse=True),),
+            daemon=True
+        )
+        thread.start()
+
+    def _process_deletion_thread(self, indices_to_delete):
+        """Background thread to handle file deletions."""
         deleted_count = 0
-        # Sort indices in reverse order to remove safely
-        for index in sorted(list(self.marked_indices), reverse=True):
-            dup = self.duplicates[index]
+        total = len(indices_to_delete)
+        
+        # Create a copy of duplicates to work with in the thread
+        # This avoids issues if self.duplicates is modified on the main thread
+        # while this thread is running (though it shouldn't be with controls disabled)
+        duplicates_copy = list(self.duplicates) 
+
+        for i, original_index in enumerate(indices_to_delete):
+            # Check if the original_index is still valid in the current duplicates_copy
+            # This is a bit tricky because indices_to_delete are based on the *original* list.
+            # A simpler approach is to pass the actual file paths to delete.
+            # For now, we'll assume indices_to_delete are stable for the duration of this thread.
+            if original_index >= len(duplicates_copy):
+                logger.warning(f"Index {original_index} out of bounds for deletion, skipping.")
+                continue
+
+            dup = duplicates_copy[original_index]
+            filename = os.path.basename(dup['source'])
+            
+            # Update UI progress
+            self.window.after(0, lambda f=filename, step=i: self.delete_progress_label.config(text=f"Deleting: {f} ({step+1}/{total})"))
+            self.window.after(0, lambda step=i: self.delete_progress.config(value=step+1))
+            
+            if self.progress_callback:
+                self.progress_callback(i + 1, total, f"Deleting duplicate: {filename}")
+            
             try:
                 # Use send2trash for safety
                 send2trash(os.path.normpath(dup['source']))
                 logger.info(f"Sent to Recycle Bin: {dup['source']}")
                 
-                # Remove from duplicates list
-                self.duplicates.pop(index)
-                self.duplicate_list.delete(index)
+                # We can't safely pop from self.duplicates while in a thread and potential UI interaction
+                # So we mark it for removal/update
                 deleted_count += 1
                 
             except Exception as e:
                 logger.error(f"Error deleting {dup['source']}: {e}")
+                
+        # Done processing, update UI on main thread
+        self.window.after(0, lambda: self._on_deletion_complete(indices_to_delete, deleted_count))
+
+    def _on_deletion_complete(self, indices_to_delete, deleted_count):
+        """Called when background deletion is finished."""
+        # Remove items from data list (reverse order)
+        # indices_to_delete are already sorted in reverse
+        for index in indices_to_delete:
+            # Ensure index is still valid after previous pops
+            if index < len(self.duplicates):
+                self.duplicates.pop(index)
         
-        # Clear marks
+        # Refresh UI
         self.marked_indices.clear()
+        self.progress_frame.pack_forget()
+        self.duplicate_list.config(state=tk.NORMAL)
+        self.mark_check.config(state=tk.NORMAL)
         
+        # Rebuild listbox (simplest way to ensure alignment)
+        self.duplicate_list.delete(0, tk.END)
+        for i, dup in enumerate(self.duplicates):
+            name = os.path.basename(dup['source'])
+            self.duplicate_list.insert(tk.END, name)
+            # Re-apply [DEL] if any (marked_indices is clear now but logic remains)
+            # This part is not strictly necessary as marked_indices is cleared,
+            # but if we wanted to preserve marks for *other* items, we'd need it.
+            # For now, it's fine as it is.
+            
         messagebox.showinfo("Complete", f"Sent {deleted_count} files to Recycle Bin.")
         
         # Reset view
